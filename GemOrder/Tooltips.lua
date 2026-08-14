@@ -211,6 +211,7 @@ function GemOrder_ApplyDropdownItemTooltips(level)
         if not IsGemOrderItemDropdown(UIDROPDOWNMENU_OPEN_MENU) then
             return
         end
+        GemOrder_ElevateDropdownList(level)
         for index, itemId in pairs(map) do
             local button = _G["DropDownList" .. level .. "Button" .. index]
             if button then
@@ -224,6 +225,74 @@ function GemOrder_ApplyDropdownItemTooltips(level)
     else
         apply()
     end
+end
+
+local function SaveMouseEnabled(frame, storage, key)
+    if frame and frame.IsMouseEnabled and frame:IsMouseEnabled() then
+        storage[key] = true
+        frame:EnableMouse(false)
+    end
+end
+
+local function RestoreMouseEnabled(frame, storage, key)
+    if frame and storage[key] then
+        frame:EnableMouse(true)
+        storage[key] = nil
+    end
+end
+
+function GemOrder_ElevateDropdownList(level)
+    if not IsGemOrderItemDropdown(UIDROPDOWNMENU_OPEN_MENU) then
+        return
+    end
+
+    level = level or UIDROPDOWNMENU_MENU_LEVEL or 1
+    local list = _G["DropDownList" .. level]
+    if not list then
+        return
+    end
+
+    list:SetFrameStrata("FULLSCREEN_DIALOG")
+    list:SetFrameLevel(1000)
+
+    if list.gemOrderMouseSaved then
+        return
+    end
+
+    local saved = {}
+    list.gemOrderMouseSaved = saved
+
+    local ui = GemOrder.UI and GemOrder.UI.frame
+    if not ui then
+        return
+    end
+
+    if ui.orderDialogOverlay then
+        SaveMouseEnabled(ui.orderDialogOverlay, saved, "overlay")
+    end
+    if ui.orderDialog and ui.orderDialog.titleBar then
+        SaveMouseEnabled(ui.orderDialog.titleBar, saved, "titleBar")
+    end
+    SaveMouseEnabled(ui, saved, "mainFrame")
+end
+
+function GemOrder_RestoreDropdownListMouseBlockers(level)
+    level = level or 1
+    local list = _G["DropDownList" .. level]
+    if not list or not list.gemOrderMouseSaved then
+        return
+    end
+
+    local saved = list.gemOrderMouseSaved
+    local ui = GemOrder.UI and GemOrder.UI.frame
+    if ui then
+        RestoreMouseEnabled(ui, saved, "mainFrame")
+        RestoreMouseEnabled(ui.orderDialogOverlay, saved, "overlay")
+        if ui.orderDialog then
+            RestoreMouseEnabled(ui.orderDialog.titleBar, saved, "titleBar")
+        end
+    end
+    list.gemOrderMouseSaved = nil
 end
 
 function GemOrder_AttachDropdownTooltips(dropdown, getItemIdFn)
@@ -267,5 +336,41 @@ function GemOrder_HookDropdownMenuTooltips()
         hooksecurefunc("UIDropDownMenu_CreateButtons", function(level)
             GemOrder_ApplyDropdownItemTooltips(level or UIDROPDOWNMENU_MENU_LEVEL or 1)
         end)
+    end
+
+    if ToggleDropDownMenu then
+        hooksecurefunc("ToggleDropDownMenu", function(level, _, dropDownFrame)
+            if not IsGemOrderItemDropdown(dropDownFrame) then
+                return
+            end
+            local menuLevel = level or 1
+            local function elevate()
+                GemOrder_ElevateDropdownList(menuLevel)
+            end
+            if C_Timer and C_Timer.After then
+                C_Timer.After(0, elevate)
+            else
+                elevate()
+            end
+        end)
+    end
+
+    for i = 1, (UIDROPDOWNMENU_MAXLEVELS or 2) do
+        local list = _G["DropDownList" .. i]
+        if list then
+            if list.HookScript then
+                list:HookScript("OnHide", function()
+                    GemOrder_RestoreDropdownListMouseBlockers(i)
+                end)
+            else
+                local prior = list:GetScript("OnHide")
+                list:SetScript("OnHide", function(...)
+                    GemOrder_RestoreDropdownListMouseBlockers(i)
+                    if prior then
+                        prior(...)
+                    end
+                end)
+            end
+        end
     end
 end
