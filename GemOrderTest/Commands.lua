@@ -3,11 +3,6 @@ SLASH_GEMORDERTEST2 = "/got"
 SLASH_GEMORDERTEST3 = "/gott"
 
 SlashCmdList["GEMORDERTEST"] = function(msg)
-    if not GemOrderTest or not GemOrderTest.UI then
-        print("|cffff0000GemOrderTest|r is not loaded yet.")
-        return
-    end
-
     msg = string.lower(strtrim(msg or ""))
 
     if msg == "stock" then
@@ -42,11 +37,14 @@ SlashCmdList["GEMORDERTEST"] = function(msg)
             print("|cff00ccffGemOrderTest|r " .. err)
         else
             print("|cff00ccffGemOrderTest|r Selected workshop.")
-            GemOrderTest.UI:Refresh()
+            if GemOrderTest.UI and GemOrderTest.UI.frame then
+                GemOrderTest.UI:Refresh()
+            end
         end
         return
     end
 
+    GemOrderTest_EnsureUI()
     GemOrderTest.UI:Toggle()
 end
 

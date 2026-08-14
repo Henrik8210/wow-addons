@@ -32,41 +32,18 @@ local NOTES_PLACEHOLDER = "Fx. this is my BiS gear..."
 local GEM_PLACEHOLDER = "Select gem..."
 local ROLE_PLACEHOLDER = "Select role..."
 
-StaticPopupDialogs = StaticPopupDialogs or {}
-StaticPopupDialogs["GEMORDERTEST_CONFIRM_CLOSE_WORKSHOP"] = {
-    text = "Are you sure you wish to close the workshop %s?",
-    button1 = YES,
-    button2 = NO,
-    OnAccept = function(self)
-        local data = self.data
-        if not data or not data.roomId then
-            return
-        end
-        local ok, err = GemOrderTest_CloseWorkshop(data.roomId)
-        if not ok then
-            print("|cff00ccffGemOrderTest|r " .. (err or "Could not close workshop."))
-        else
-            print("|cff00ccffGemOrderTest|r Workshop closed.")
-        end
-        if GemOrderTest.UI then
-            GemOrderTest.UI:Refresh()
-        end
-    end,
-    timeout = 0,
-    whileDead = true,
-    hideOnEscape = true,
-}
-
 local function ConfirmCloseWorkshop(room)
-    if not room or not StaticPopup_Show then
+    if not room then
         return
     end
-    local dialog = StaticPopup_Show("GEMORDERTEST_CONFIRM_CLOSE_WORKSHOP", room.name)
-    if dialog then
-        dialog.data = {
-            roomId = room.id,
-            roomName = room.name,
-        }
+    local ok, err = GemOrderTest_CloseWorkshop(room.id)
+    if not ok then
+        print("|cff00ccffGemOrderTest|r " .. (err or "Could not close workshop."))
+    else
+        print("|cff00ccffGemOrderTest|r Workshop closed.")
+    end
+    if GemOrderTest.UI then
+        GemOrderTest.UI:Refresh()
     end
 end
 
@@ -377,11 +354,12 @@ function UI:RefreshJoinDropdownCache()
 end
 
 function UI:Init()
+    if self.frame then
+        return
+    end
     self:BuildDropdownCaches()
     self:CreateMainFrame()
     self:CreateTabs()
-    self:CreateOrderDialog()
-    self:CreateOrderForm()
     self:CreateQueueList()
     self:CreateWorkshopPanel()
     self:CreateStockPanel()
@@ -476,9 +454,6 @@ function UI:UpdateOrdersLayout(tabId)
 
     if tabId == "orders" then
         f.queueHeader:SetText("Order Queue")
-        if f.placeOrderBtn then
-            f.placeOrderBtn:Show()
-        end
     end
 
     self:LayoutQueuePanel()
@@ -529,8 +504,6 @@ function UI:UpdateTabAccess()
         local f = self.frame
         if f then
             f.queueInset:Hide()
-            if f.placeOrderBtn then f.placeOrderBtn:Hide() end
-            self:CloseOrderDialog()
             if f.workshopPanel then f.workshopPanel:Show() end
             if f.stockPanel then f.stockPanel:Hide() end
             for id, btn in pairs(f.tabButtons or {}) do
@@ -542,7 +515,6 @@ end
 
 function UI:ShowTab(tabId, skipAccessCheck)
     SafeCloseDropdownMenus()
-    self:CloseOrderDialog()
 
     if not skipAccessCheck and (tabId == "orders" or tabId == "stock") and not GemOrderTest_HasJoinedWorkshop() then
         tabId = "workshop"
@@ -1705,14 +1677,6 @@ function UI:CreateQueueList()
     f.queueHeader = CreateLabel(inset, "Order Queue", "GameFontNormalLarge")
     f.queueHeader:SetPoint("TOPLEFT", 16, -12)
 
-    f.placeOrderBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
-    f.placeOrderBtn:SetSize(120, 22)
-    f.placeOrderBtn:SetText("Place Order")
-    f.placeOrderBtn:Hide()
-    f.placeOrderBtn:SetScript("OnClick", function()
-        self:OpenOrderDialog()
-    end)
-
     local scroll = CreateFrame("ScrollFrame", "GemOrderTestScroll", inset, "UIPanelScrollFrameTemplate")
 
     local content = CreateFrame("Frame", nil, scroll)
@@ -1884,17 +1848,7 @@ function UI:CreateOrderRow(order, yOffset)
     local canManageWorkshop = room and GemOrderTest_CanManageWorkshop(room, player)
 
     if canManageWorkshop then
-        local deleteBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-        deleteBtn:SetSize(60, 20)
-        deleteBtn:SetPoint("TOPRIGHT", -8, -32)
-        deleteBtn:SetText("Delete")
-        deleteBtn:SetScript("OnClick", function()
-            local ok, err = GemOrderTest_DeleteOrder(order.id)
-            if not ok and err then
-                print("|cff00ccffGemOrderTest|r " .. err)
-            end
-            self:Refresh()
-        end)
+        -- v0.6.0 had no leader Delete button (added v0.7.40)
     elseif (isOwner or canManage) and order.status == "pending" then
         local cancelBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
         cancelBtn:SetSize(60, 20)
@@ -1980,6 +1934,9 @@ function UI:Refresh()
 end
 
 function UI:Toggle()
+    if not self.frame then
+        return
+    end
     if self.frame:IsShown() then
         SafeCloseDropdownMenus()
         self.frame:Hide()

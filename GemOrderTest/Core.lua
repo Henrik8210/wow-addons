@@ -56,7 +56,7 @@ function GemOrderTest_GetOrderStatusLabel(order)
     return GemOrderTest_GetStatusLabel(order.status)
 end
 
-GemOrderTest.VERSION = "0.6.0"
+GemOrderTest.VERSION = "0.6.0-r1"
 
 function GemOrderTest_GetVersion()
     return GemOrderTest.VERSION
@@ -535,6 +535,20 @@ local function After(delay, fn)
     end)
 end
 
+function GemOrderTest_EnsureUI()
+    if GemOrderTest.UI and GemOrderTest.UI.frame then
+        return true
+    end
+    local ok, err = pcall(function()
+        GemOrderTest.UI:Init()
+    end)
+    if not ok then
+        print("|cffff0000GemOrderTest UI error:|r " .. tostring(err))
+        return false
+    end
+    return GemOrderTest.UI and GemOrderTest.UI.frame ~= nil
+end
+
 local function OnAddonLoaded(_, addon)
     if addon ~= ADDON_NAME then
         return
@@ -551,16 +565,8 @@ local function OnAddonLoaded(_, addon)
         print("|cffff0000GemOrderTest minimap/sync error:|r " .. tostring(err))
     end
 
-    ok, err = pcall(function()
-        GemOrderTest_HookDropdownMenuTooltips()
-        GemOrderTest.UI:Init()
-    end)
-    if not ok then
-        print("|cffff0000GemOrderTest UI error:|r " .. tostring(err))
-    end
-
-    if GemOrderTest.Minimap.button or (GemOrderTest.UI and GemOrderTest.UI.frame) then
-        print("|cff00ccffGemOrderTest|r v0.6.0 bisect — gear icons era. Type |cff00ccff/gotest|r")
+    if GemOrderTest.Minimap.button then
+        print("|cff00ccffGemOrderTest|r v0.6.0-r1 bisect — UI loads on first open only. Type |cff00ccff/gotest|r")
     else
         print("|cffff0000GemOrderTest failed to load.|r Check chat for errors.")
     end
@@ -587,7 +593,7 @@ local function TryGuildSync()
         end
     end
 
-    if GemOrderTest.UI then
+    if GemOrderTest.UI and GemOrderTest.UI.frame then
         GemOrderTest.UI:Refresh()
     end
 
@@ -622,7 +628,7 @@ boot:SetScript("OnEvent", function(_, event, arg1)
         OnPlayerLogin()
     elseif event == "GUILD_ROSTER_UPDATE" then
         OnGuildReady()
-        if GemOrderTest.UI then
+        if GemOrderTest.UI and GemOrderTest.UI.frame then
             GemOrderTest.UI:Refresh()
         end
     end

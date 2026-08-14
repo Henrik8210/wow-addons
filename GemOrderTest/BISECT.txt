@@ -1,15 +1,20 @@
 GemOrderTest bisect log (logout debugging)
 ==========================================
-Disable main GemOrder in the addon list. Enable only GemOrderTest.
+Disable main GemOrder. Enable only GemOrderTest.
 
-v0.7.70 - FAIL (login recipe auto-scan with CastSpell/CloseTradeSkill)
-v0.7.0  - TEST (no Recipes; result pending)
-v0.6.0  - TESTING NOW (workshops + stock + gear icons; WorldFrame dropdown hook)
+FAKE v0.6.0 - FAIL (still had v0.7.73 code: stockWatcher, order dialog, StaticPopup, etc.)
 
-v0.6.0 had: Workshop | Orders | Gem Stock tabs, inline-era UI, gear icons on orders,
-CloseDropDownMenus + WorldFrame hook, no Recipes/role/completed tab/co-leaders.
+v0.6.0-r1 - TESTING NOW
+  Removed (NOT in real v0.6.0):
+  - stockWatcher BAG_UPDATE auto-share (added v0.7.28)
+  - Order dialog + overlay (added ~v0.7.3x)
+  - StaticPopup close confirm (added v0.7.55)
+  - Delete order button (added v0.7.40)
+  - UI init on login — UI now loads only on first /gotest or minimap click
 
-If v0.6.0 works: bug entered between 0.6.0 and 0.7.0 (or 0.7.41 Recipes).
-If v0.6.0 fails: next strip login stock scan, then guild sync, then dropdown dismiss.
+  Still runs at login: guild sync, bag scan if in workshop, minimap button, CHAT_MSG_ADDON
+
+If v0.6.0-r1 PASS without opening UI: bug is in stripped UI/load code.
+If v0.6.0-r1 FAIL without opening UI: bug is in sync/minimap/login hooks, not UI panels.
 
 Commands: /gotest
