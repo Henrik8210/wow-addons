@@ -144,16 +144,13 @@ function GemOrder_AttachItemTooltip(frame, getLinkFn)
     frame:SetScript("OnLeave", GemOrder_HideTooltip)
 end
 
-function GemOrder_ClearDropdownItemTooltips()
-    -- Intentionally empty: touching DropDownList buttons taints protected Blizzard UI.
-end
-
-function GemOrder_AttachDropdownItemButton()
-    -- Intentionally empty: touching DropDownList buttons taints protected Blizzard UI.
-end
-
-function GemOrder_ApplyDropdownItemTooltips()
-    -- Intentionally empty: touching DropDownList buttons taints protected Blizzard UI.
+local function IsGemOrderItemDropdown(dropdown)
+    if not dropdown or not dropdown.GetName then
+        return false
+    end
+    local name = dropdown:GetName() or ""
+    return name:match("^GemOrderGearDropdown") ~= nil
+        or name:match("^GemOrderGemDropdown") ~= nil
 end
 
 function GemOrder_AttachDropdownTooltips(dropdown, getItemIdFn)
@@ -166,5 +163,28 @@ function GemOrder_AttachDropdownTooltips(dropdown, getItemIdFn)
 end
 
 function GemOrder_HookDropdownMenuTooltips()
-    -- Dropdown list item tooltips disabled to avoid tainting Blizzard DropDownList buttons.
+    if GemOrder.dropdownTooltipHooked or not hooksecurefunc then
+        return
+    end
+    GemOrder.dropdownTooltipHooked = true
+
+    hooksecurefunc("UIDropDownMenuButton_OnEnter", function(self)
+        if not self or not self:IsShown() then
+            return
+        end
+        if not IsGemOrderItemDropdown(UIDROPDOWNMENU_OPEN_MENU) then
+            return
+        end
+        local itemId = self.value
+        if type(itemId) == "number" and itemId > 0 then
+            GemOrder_ShowItemTooltip(self, itemId, "ANCHOR_RIGHT")
+        end
+    end)
+
+    hooksecurefunc("UIDropDownMenuButton_OnLeave", function()
+        if not IsGemOrderItemDropdown(UIDROPDOWNMENU_OPEN_MENU) then
+            return
+        end
+        GemOrder_HideTooltip()
+    end)
 end

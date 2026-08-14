@@ -1,6 +1,6 @@
-local ADDON_NAME = ...
+﻿local ADDON_NAME = ...
 
-GemOrderTest = GemOrderTest or {}
+GemOrderTest = GemOrder or {}
 local MinimapBtn = {}
 GemOrderTest.Minimap = MinimapBtn
 
@@ -117,4 +117,3 @@ function MinimapBtn:Init()
     button:Show()
     self.button = button
 end
-

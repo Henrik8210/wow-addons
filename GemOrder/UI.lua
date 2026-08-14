@@ -33,17 +33,48 @@ local NOTES_PLACEHOLDER = "Fx. this is my BiS gear..."
 local GEM_PLACEHOLDER = "Select gem..."
 local ROLE_PLACEHOLDER = "Select role..."
 
-local function ConfirmCloseWorkshop(room)
-    if not room then
+local function RegisterCloseWorkshopPopup()
+    if GemOrder.closeWorkshopPopupRegistered then
         return
     end
-    local ok, err = GemOrder_CloseWorkshop(room.id)
-    if not ok then
-        print("|cff00ccffGemOrder|r " .. (err or "Could not close workshop."))
-    else
-        print("|cff00ccffGemOrder|r Workshop closed.")
+    GemOrder.closeWorkshopPopupRegistered = true
+    StaticPopupDialogs = StaticPopupDialogs or {}
+    StaticPopupDialogs["GEMORDER_CONFIRM_CLOSE_WORKSHOP"] = {
+        text = "Are you sure you wish to close the workshop %s?",
+        button1 = YES,
+        button2 = NO,
+        OnAccept = function(self)
+            local data = self.data
+            if not data or not data.roomId then
+                return
+            end
+            local ok, err = GemOrder_CloseWorkshop(data.roomId)
+            if not ok then
+                print("|cff00ccffGemOrder|r " .. (err or "Could not close workshop."))
+            else
+                print("|cff00ccffGemOrder|r Workshop closed.")
+            end
+            GemOrder_RefreshUI()
+        end,
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = true,
+        preferredIndex = 3,
+    }
+end
+
+local function ConfirmCloseWorkshop(room)
+    if not room or not StaticPopup_Show then
+        return
     end
-    GemOrder_RefreshUI()
+    RegisterCloseWorkshopPopup()
+    local dialog = StaticPopup_Show("GEMORDER_CONFIRM_CLOSE_WORKSHOP", room.name)
+    if dialog then
+        dialog.data = {
+            roomId = room.id,
+            roomName = room.name,
+        }
+    end
 end
 
 local GEM_COLORS = {

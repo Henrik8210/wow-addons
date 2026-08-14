@@ -2,19 +2,24 @@ GemOrderTest bisect log (logout debugging)
 ==========================================
 Disable main GemOrder. Enable only GemOrderTest.
 
-FAKE v0.6.0 - FAIL (still had v0.7.73 code: stockWatcher, order dialog, StaticPopup, etc.)
+Current baseline: v0.7.80 (mirrors GemOrder v0.7.80)
+Sync: .\scripts\sync-gemordertest.ps1
 
-v0.6.0-r1 - TESTING NOW
-  Removed (NOT in real v0.6.0):
-  - stockWatcher BAG_UPDATE auto-share (added v0.7.28)
-  - Order dialog + overlay (added ~v0.7.3x)
-  - StaticPopup close confirm (added v0.7.55)
-  - Delete order button (added v0.7.40)
-  - UI init on login — UI now loads only on first /gotest or minimap click
+Historical notes
+----------------
+v0.6.0-r1 PASS — stripped post-0.6.0 load-time code (stockWatcher, eager UI, StaticPopup at load).
 
-  Still runs at login: guild sync, bag scan if in workshop, minimap button, CHAT_MSG_ADDON
+v0.7.80 — full mirror of production GemOrder with logout-safe patterns:
+  - Lazy UI (EnsureUI on first open)
+  - No BAG_UPDATE stock watcher
+  - Lazy StaticPopup registration
+  - hooksecurefunc dropdown tooltips (no SetScript on DropDownList)
 
-If v0.6.0-r1 PASS without opening UI: bug is in stripped UI/load code.
-If v0.6.0-r1 FAIL without opening UI: bug is in sync/minimap/login hooks, not UI panels.
+Test procedure
+--------------
+1. Disable GemOrder, enable GemOrderTest
+2. /reload
+3. Logout without opening UI
+4. Logout after opening UI and using dropdowns
 
-Commands: /gotest
+Commands: /gotest, /got, /gott

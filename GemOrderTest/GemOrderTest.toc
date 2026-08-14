@@ -1,8 +1,8 @@
-## Interface: 20505, 20506
+﻿## Interface: 20505, 20506
 ## Title: GemOrderTest
-## Notes: Bisect v0.6.0-r1 — stripped post-0.6.0 code (stockWatcher, order dialog, StaticPopup). Disable GemOrder.
+## Notes: Bisect/debug mirror of GemOrder v0.7.80. Separate saved vars and sync prefix (GemOrdT). Disable main GemOrder when testing logout.
 ## Author: Henrik8210
-## Version: 0.6.0-r1
+## Version: 0.7.80
 ## SavedVariables: GemOrderTestDB
 
 Core.lua

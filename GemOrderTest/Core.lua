@@ -1,4 +1,4 @@
-local ADDON_NAME = ...
+﻿local ADDON_NAME = ...
 
 if not strtrim then
     function strtrim(s)
@@ -6,7 +6,8 @@ if not strtrim then
     end
 end
 
-GemOrderTest = GemOrderTest or {}
+GemOrderTest = GemOrder or {}
+GemOrderTest.UI = GemOrderTest.UI or {}
 GemOrderTestDB = GemOrderTestDB or {
     orders = {},
     rooms = {},
@@ -56,10 +57,37 @@ function GemOrderTest_GetOrderStatusLabel(order)
     return GemOrderTest_GetStatusLabel(order.status)
 end
 
-GemOrderTest.VERSION = "0.6.0-r1"
+GemOrderTest.VERSION = "0.7.80"
 
 function GemOrderTest_GetVersion()
     return GemOrderTest.VERSION
+end
+
+function GemOrderTest_RefreshUI()
+    if GemOrderTest.UI and GemOrderTest.UI.frame then
+        GemOrderTest.UI:Refresh()
+    end
+end
+
+function GemOrderTest_EnsureUI()
+    if GemOrderTest.UI and GemOrderTest.UI.frame then
+        return true
+    end
+
+    if not GemOrderTest.UI or not GemOrderTest.UI.Init then
+        print("|cffff0000GemOrderTest|r UI failed to load.")
+        return false
+    end
+
+    local ok, err = pcall(function()
+        GemOrderTest_HookDropdownMenuTooltips()
+        GemOrderTest.UI:Init()
+    end)
+    if not ok then
+        print("|cffff0000GemOrderTest UI error:|r " .. tostring(err))
+        return false
+    end
+    return GemOrderTest.UI and GemOrderTest.UI.frame ~= nil
 end
 
 GemOrderTest_ROLES = { "Tank", "Healer", "DPS" }
@@ -249,7 +277,10 @@ function GemOrderTest_CreateOrder(gear, gems, notes, role)
         return nil, "Select at least one gem."
     end
 
-    role = role or "DPS"
+    role = role or ""
+    if not GemOrderTest_IsValidRole(role) then
+        return nil, "Select a role."
+    end
 
     local _, classToken = UnitClass("player")
     local order = {
@@ -470,7 +501,7 @@ local function CollectSortedOrders(mode)
                     -- skip
                 elseif mode == "completed" and order.status ~= "completed" then
                     -- skip
-                elseif mode == "all" or mode == "active" or mode == "completed" then
+                else
                     table.insert(list, order)
                 end
             end
@@ -504,11 +535,7 @@ local function CollectSortedOrders(mode)
 end
 
 function GemOrderTest_GetSortedOrders()
-    return CollectSortedOrders("all")
-end
-
-function GemOrderTest_GetAllOrders()
-    return CollectSortedOrders("all")
+    return CollectSortedOrders("active")
 end
 
 function GemOrderTest_GetActiveOrders()
@@ -535,20 +562,6 @@ local function After(delay, fn)
     end)
 end
 
-function GemOrderTest_EnsureUI()
-    if GemOrderTest.UI and GemOrderTest.UI.frame then
-        return true
-    end
-    local ok, err = pcall(function()
-        GemOrderTest.UI:Init()
-    end)
-    if not ok then
-        print("|cffff0000GemOrderTest UI error:|r " .. tostring(err))
-        return false
-    end
-    return GemOrderTest.UI and GemOrderTest.UI.frame ~= nil
-end
-
 local function OnAddonLoaded(_, addon)
     if addon ~= ADDON_NAME then
         return
@@ -566,7 +579,7 @@ local function OnAddonLoaded(_, addon)
     end
 
     if GemOrderTest.Minimap.button then
-        print("|cff00ccffGemOrderTest|r v0.6.0-r1 bisect — UI loads on first open only. Type |cff00ccff/gotest|r")
+        print("|cff00ccffGemOrderTest|r v" .. GemOrderTest_GetVersion() .. " test mirror — disable main GemOrder. Type |cff00ccff/gotest|r.")
     else
         print("|cffff0000GemOrderTest failed to load.|r Check chat for errors.")
     end
@@ -633,4 +646,3 @@ boot:SetScript("OnEvent", function(_, event, arg1)
         end
     end
 end)
-

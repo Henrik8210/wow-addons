@@ -44,6 +44,8 @@ Parallel **bisect/debug build** of GemOrder for tracking down issues (e.g. logou
 
 See `GemOrderTest/BISECT.txt` for version bisect notes.
 
+See **[GEMORDER-GUIDELINES.md](GEMORDER-GUIDELINES.md)** for versioning, git sync, WoW deploy, and GemOrderTest sync workflow.
+
 ## Development
 
 Update `## Interface:` in each `.toc` when WoW patches. Reload with `/reload`.

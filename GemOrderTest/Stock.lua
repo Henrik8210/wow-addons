@@ -1,4 +1,4 @@
-GemOrderTest = GemOrderTest or {}
+﻿GemOrderTest = GemOrder or {}
 
 local function EnsureDB()
     GemOrderTestDB = GemOrderTestDB or {}
@@ -118,7 +118,7 @@ function GemOrderTest_RefreshLocalStock()
     if GemOrderTest_ShouldShareStock() then
         GemOrderTest_ShareWorkshopStock()
     end
-    if GemOrderTest.UI then
+    if GemOrderTest.UI and GemOrderTest.UI.frame then
         GemOrderTest.UI:Refresh()
     end
 end
@@ -214,4 +214,3 @@ function GemOrderTest_GetStockListing(counts)
     end)
     return lines
 end
-

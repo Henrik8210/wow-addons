@@ -5,6 +5,8 @@ alwaysApply: true
 
 # Git sync for wow-addons
 
+Full workflow: **[GEMORDER-GUIDELINES.md](../../GEMORDER-GUIDELINES.md)**
+
 Remote: https://github.com/Henrik8210/wow-addons.git (branch `main`).
 
 WoW install path (always copy here after GemOrder/GemOrderTest changes):
@@ -15,6 +17,7 @@ After completing meaningful work on GemOrder or GemOrderTest:
 1. Commit all relevant changes with a clear message (why, not just what).
 2. Push to `origin/main` unless the user asked not to push.
 3. Bump `## Version:` in the relevant `.toc` when shipping a new release build.
-4. Copy the updated `GemOrder/` folder to the WoW AddOns path so the user can `/reload` immediately.
+4. Run `.\scripts\sync-gemordertest.ps1` so GemOrderTest matches the same version.
+5. Copy the updated `GemOrder/` and `GemOrderTest/` folders to the WoW AddOns path so the user can `/reload` immediately.
 
 Do not leave addon code only on disk in the repo — deploy to WoW and keep GitHub as source of truth.

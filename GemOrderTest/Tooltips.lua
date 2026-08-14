@@ -1,4 +1,4 @@
-GemOrderTest = GemOrderTest or {}
+﻿GemOrderTest = GemOrder or {}
 GemOrderTest._loggingOut = false
 
 function GemOrderTest_IsLoggingOut()
@@ -144,16 +144,13 @@ function GemOrderTest_AttachItemTooltip(frame, getLinkFn)
     frame:SetScript("OnLeave", GemOrderTest_HideTooltip)
 end
 
-function GemOrderTest_ClearDropdownItemTooltips()
-    -- Intentionally empty: touching DropDownList buttons taints protected Blizzard UI.
-end
-
-function GemOrderTest_AttachDropdownItemButton()
-    -- Intentionally empty: touching DropDownList buttons taints protected Blizzard UI.
-end
-
-function GemOrderTest_ApplyDropdownItemTooltips()
-    -- Intentionally empty: touching DropDownList buttons taints protected Blizzard UI.
+local function IsGemOrderItemDropdown(dropdown)
+    if not dropdown or not dropdown.GetName then
+        return false
+    end
+    local name = dropdown:GetName() or ""
+    return name:match("^GemOrderTestGearDropdown") ~= nil
+        or name:match("^GemOrderTestGemDropdown") ~= nil
 end
 
 function GemOrderTest_AttachDropdownTooltips(dropdown, getItemIdFn)
@@ -166,6 +163,28 @@ function GemOrderTest_AttachDropdownTooltips(dropdown, getItemIdFn)
 end
 
 function GemOrderTest_HookDropdownMenuTooltips()
-    -- Dropdown list item tooltips disabled to avoid tainting Blizzard DropDownList buttons.
-end
+    if GemOrderTest.dropdownTooltipHooked or not hooksecurefunc then
+        return
+    end
+    GemOrderTest.dropdownTooltipHooked = true
 
+    hooksecurefunc("UIDropDownMenuButton_OnEnter", function(self)
+        if not self or not self:IsShown() then
+            return
+        end
+        if not IsGemOrderItemDropdown(UIDROPDOWNMENU_OPEN_MENU) then
+            return
+        end
+        local itemId = self.value
+        if type(itemId) == "number" and itemId > 0 then
+            GemOrderTest_ShowItemTooltip(self, itemId, "ANCHOR_RIGHT")
+        end
+    end)
+
+    hooksecurefunc("UIDropDownMenuButton_OnLeave", function()
+        if not IsGemOrderItemDropdown(UIDROPDOWNMENU_OPEN_MENU) then
+            return
+        end
+        GemOrderTest_HideTooltip()
+    end)
+end

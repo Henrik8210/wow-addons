@@ -1,4 +1,4 @@
--- Phase 3 epic gem cuts (Indormi recipes) + raw materials from BT / Hyjal
+﻿-- Phase 3 epic gem cuts (Indormi recipes) + raw materials from BT / Hyjal
 GemOrderTest_Gems = {
     { name = "Crimson Spinel", color = "Red", raw = true, stats = "Uncut red epic", itemId = 32227 },
     { name = "Lionseye", color = "Yellow", raw = true, stats = "Uncut yellow epic", itemId = 32205 },
@@ -164,4 +164,3 @@ end
 function GemOrderTest_FormatGemLabel(gem)
     return gem.name
 end
-

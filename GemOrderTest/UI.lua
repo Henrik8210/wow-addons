@@ -1,6 +1,6 @@
-local ADDON_NAME = ...
+﻿local ADDON_NAME = ...
 
-GemOrderTest = GemOrderTest or {}
+GemOrderTest = GemOrder or {}
 local UI = {}
 GemOrderTest.UI = UI
 
@@ -28,22 +28,52 @@ local QUEUE_FRAME_MARGIN = 12
 local QUEUE_INSET_PADDING = 12
 local QUEUE_SCROLLBAR_WIDTH = 28
 local QUEUE_SCROLLBAR_GUTTER = 12
+local QUEUE_HEADER_BAND = 38
 local NOTES_PLACEHOLDER = "Fx. this is my BiS gear..."
 local GEM_PLACEHOLDER = "Select gem..."
 local ROLE_PLACEHOLDER = "Select role..."
 
-local function ConfirmCloseWorkshop(room)
-    if not room then
+local function RegisterCloseWorkshopPopup()
+    if GemOrderTest.closeWorkshopPopupRegistered then
         return
     end
-    local ok, err = GemOrderTest_CloseWorkshop(room.id)
-    if not ok then
-        print("|cff00ccffGemOrderTest|r " .. (err or "Could not close workshop."))
-    else
-        print("|cff00ccffGemOrderTest|r Workshop closed.")
+    GemOrderTest.closeWorkshopPopupRegistered = true
+    StaticPopupDialogs = StaticPopupDialogs or {}
+    StaticPopupDialogs["GemOrderTestTest_CONFIRM_CLOSE_WORKSHOP"] = {
+        text = "Are you sure you wish to close the workshop %s?",
+        button1 = YES,
+        button2 = NO,
+        OnAccept = function(self)
+            local data = self.data
+            if not data or not data.roomId then
+                return
+            end
+            local ok, err = GemOrderTest_CloseWorkshop(data.roomId)
+            if not ok then
+                print("|cff00ccffGemOrderTest|r " .. (err or "Could not close workshop."))
+            else
+                print("|cff00ccffGemOrderTest|r Workshop closed.")
+            end
+            GemOrderTest_RefreshUI()
+        end,
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = true,
+        preferredIndex = 3,
+    }
+end
+
+local function ConfirmCloseWorkshop(room)
+    if not room or not StaticPopup_Show then
+        return
     end
-    if GemOrderTest.UI then
-        GemOrderTest.UI:Refresh()
+    RegisterCloseWorkshopPopup()
+    local dialog = StaticPopup_Show("GemOrderTestTest_CONFIRM_CLOSE_WORKSHOP", room.name)
+    if dialog then
+        dialog.data = {
+            roomId = room.id,
+            roomName = room.name,
+        }
     end
 end
 
@@ -86,6 +116,16 @@ end
 
 local function GetQueueContentWidth()
     return GetQueueScrollWidth() - QUEUE_SCROLLBAR_WIDTH - QUEUE_SCROLLBAR_GUTTER
+end
+
+local function LayoutQueueScrollbarOnce(inset)
+    local scrollBar = _G["GemOrderTestScrollScrollBar"]
+    if scrollBar then
+        scrollBar:ClearAllPoints()
+        scrollBar:SetPoint("TOPRIGHT", inset, "TOPRIGHT", 0, -QUEUE_HEADER_BAND)
+        scrollBar:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", 0, QUEUE_INSET_PADDING)
+        scrollBar:SetWidth(QUEUE_SCROLLBAR_WIDTH)
+    end
 end
 
 local function GreyGem(name)
@@ -196,35 +236,23 @@ local function CreateMainFrameHelper()
     return frame
 end
 
-local function CloseDropdownMenus()
-    if CloseDropDownMenus then
-        CloseDropDownMenus()
-    end
-end
-
-local function HookWorldDropdownDismiss()
-    if GemOrderTest._worldDismissHooked or not WorldFrame then
-        return
-    end
-    GemOrderTest._worldDismissHooked = true
-
-    local previous = WorldFrame:GetScript("OnMouseDown")
-    WorldFrame:SetScript("OnMouseDown", function(...)
-        CloseDropdownMenus()
-        if previous then
-            previous(...)
+local function HideOpenDropdownLists()
+    for i = 1, (UIDROPDOWNMENU_MAXLEVELS or 2) do
+        local list = _G["DropDownList" .. i]
+        if list and list.IsShown and list:IsShown() then
+            list:Hide()
         end
-    end)
+    end
 end
 
 local function SafeCloseDropdownMenus()
-    CloseDropdownMenus()
+    HideOpenDropdownLists()
 end
 
 local function EnableDropdownDismissLayer(frame)
     frame:EnableMouse(true)
     frame:SetScript("OnMouseDown", function()
-        CloseDropdownMenus()
+        HideOpenDropdownLists()
     end)
 end
 
@@ -360,10 +388,12 @@ function UI:Init()
     self:BuildDropdownCaches()
     self:CreateMainFrame()
     self:CreateTabs()
+    self:CreateOrderDialog()
+    self:CreateOrderForm()
     self:CreateQueueList()
     self:CreateWorkshopPanel()
     self:CreateStockPanel()
-    HookWorldDropdownDismiss()
+    self:CreateRecipesPanel()
     self:ShowTab("workshop")
     self:Refresh()
 end
@@ -381,10 +411,8 @@ function UI:CreateMainFrame()
     f:SetFrameStrata("DIALOG")
     f:Hide()
 
-    tinsert(UISpecialFrames, f:GetName())
-
     f:SetScript("OnHide", function()
-        CloseDropdownMenus()
+        HideOpenDropdownLists()
     end)
 
     SetFrameTitle(f, "GemOrderTest")
@@ -407,6 +435,12 @@ function UI:CreateMainFrame()
     f.jcLabel:SetWidth(FRAME_WIDTH - 160)
     f.jcLabel:SetJustifyH("LEFT")
 
+    f.creditsLabel = CreateLabel(f, "Developed by Nobunda - tested by Just", "GameFontDisableSmall")
+    f.creditsLabel:SetPoint("BOTTOMLEFT", 16, 10)
+
+    f.versionLabel = CreateLabel(f, "v" .. GetAddonVersion(), "GameFontDisableSmall")
+    f.versionLabel:SetPoint("BOTTOMRIGHT", -16, 10)
+
     f.queueInset = CreateInsetPanel(f)
     f.queueInset:SetPoint("TOPLEFT", 12, -108)
     f.queueInset:SetPoint("BOTTOMRIGHT", -12, 36)
@@ -424,7 +458,9 @@ function UI:CreateTabs()
     local tabs = {
         { id = "workshop", label = "Workshop" },
         { id = "orders", label = "Orders" },
-        { id = "stock", label = "Gem Stock" },
+        { id = "completed", label = "Done" },
+        { id = "stock", label = "Stock" },
+        { id = "recipes", label = "Recipes" },
     }
 
     local x = 12
@@ -454,6 +490,14 @@ function UI:UpdateOrdersLayout(tabId)
 
     if tabId == "orders" then
         f.queueHeader:SetText("Order Queue")
+        if f.placeOrderBtn then
+            f.placeOrderBtn:Show()
+        end
+    elseif tabId == "completed" then
+        f.queueHeader:SetText("Completed Orders")
+        if f.placeOrderBtn then
+            f.placeOrderBtn:Hide()
+        end
     end
 
     self:LayoutQueuePanel()
@@ -467,7 +511,7 @@ function UI:LayoutQueuePanel()
 
     local inset = f.queueInset
     f.scroll:ClearAllPoints()
-    f.scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", QUEUE_INSET_PADDING, -QUEUE_INSET_PADDING)
+    f.scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", QUEUE_INSET_PADDING, -QUEUE_HEADER_BAND)
     f.scroll:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", 0, QUEUE_INSET_PADDING)
 
     if f.placeOrderBtn then
@@ -488,7 +532,7 @@ function UI:UpdateTabAccess()
         return
     end
 
-    for _, tabId in ipairs({ "orders", "stock" }) do
+    for _, tabId in ipairs({ "orders", "completed", "stock", "recipes" }) do
         local btn = f.tabButtons[tabId]
         if btn then
             if joined then
@@ -499,13 +543,16 @@ function UI:UpdateTabAccess()
         end
     end
 
-    if not joined and (self.activeTab == "orders" or self.activeTab == "stock") then
+    if not joined and (self.activeTab == "orders" or self.activeTab == "completed" or self.activeTab == "stock" or self.activeTab == "recipes") then
         self.activeTab = "workshop"
         local f = self.frame
         if f then
             f.queueInset:Hide()
+            if f.placeOrderBtn then f.placeOrderBtn:Hide() end
+            self:CloseOrderDialog()
             if f.workshopPanel then f.workshopPanel:Show() end
             if f.stockPanel then f.stockPanel:Hide() end
+            if f.recipesPanel then f.recipesPanel:Hide() end
             for id, btn in pairs(f.tabButtons or {}) do
                 if id == "workshop" then btn:LockHighlight() else btn:UnlockHighlight() end
             end
@@ -515,8 +562,9 @@ end
 
 function UI:ShowTab(tabId, skipAccessCheck)
     SafeCloseDropdownMenus()
+    self:CloseOrderDialog()
 
-    if not skipAccessCheck and (tabId == "orders" or tabId == "stock") and not GemOrderTest_HasJoinedWorkshop() then
+    if not skipAccessCheck and (tabId == "orders" or tabId == "completed" or tabId == "stock" or tabId == "recipes") and not GemOrderTest_HasJoinedWorkshop() then
         tabId = "workshop"
     end
 
@@ -524,7 +572,7 @@ function UI:ShowTab(tabId, skipAccessCheck)
     self.activeTab = tabId
     local f = self.frame
 
-    local showOrders = tabId == "orders"
+    local showOrders = tabId == "orders" or tabId == "completed"
     if showOrders then
         self:UpdateOrdersLayout(tabId)
     end
@@ -535,6 +583,9 @@ function UI:ShowTab(tabId, skipAccessCheck)
     if f.stockPanel then
         f.stockPanel:SetShown(tabId == "stock")
     end
+    if f.recipesPanel then
+        f.recipesPanel:SetShown(tabId == "recipes")
+    end
 
     for id, btn in pairs(f.tabButtons or {}) do
         if id == tabId then
@@ -544,7 +595,7 @@ function UI:ShowTab(tabId, skipAccessCheck)
         end
     end
 
-    if tabId == "orders" and GemOrderTest_HasJoinedWorkshop() and IsInGuild() then
+    if (tabId == "orders" or tabId == "completed" or tabId == "recipes") and GemOrderTest_HasJoinedWorkshop() and IsInGuild() then
         GemOrderTest.Sync:RequestSync()
     end
 
@@ -752,7 +803,8 @@ function UI:RefreshWorkshopMembers()
     panel.memberScroll:SetPoint("TOPLEFT", panel.membersLabel, "BOTTOMLEFT", -4, -4)
     panel.memberScroll:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -28, 36)
 
-    local isLeader = room and room.leader == UnitName("player")
+    local isManager = GemOrderTest_CanManageWorkshop(room, UnitName("player"))
+    local isOwner = GemOrderTest_IsWorkshopOwner(room, UnitName("player"))
     local members = GemOrderTest_GetSortedRoomMembers(room)
     local y = 0
     for _, name in ipairs(members) do
@@ -766,20 +818,41 @@ function UI:RefreshWorkshopMembers()
         if name == room.leader then
             table.insert(tags, "|cff00ff00Leader|r")
         end
+        if room.coLeaders and room.coLeaders[name] then
+            table.insert(tags, "|cffffcc00Co-leader|r")
+        end
         if room.collaborators and room.collaborators[name] then
             table.insert(tags, "|cff66ccffJewelcrafter|r")
         end
         local tagText = #tags > 0 and ("  " .. table.concat(tags, " ")) or ""
         label:SetText(GemOrderTest_ColorizePlayer(name) .. tagText)
 
+        local isTargetCoLeader = room.coLeaders and room.coLeaders[name]
         local isJewelcrafter = room.collaborators and room.collaborators[name]
-        if name ~= room.leader and isLeader then
-            if isJewelcrafter then
+        if name ~= room.leader and isManager and not (isTargetCoLeader and not isOwner) then
+            local right = -8
+            local function placeBtn(text, width, onClick)
                 local btn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-                btn:SetSize(84, 22)
-                btn:SetPoint("RIGHT", -8, 0)
-                btn:SetText("Demote")
-                btn:SetScript("OnClick", function()
+                btn:SetSize(width, 22)
+                btn:SetPoint("RIGHT", right, 0)
+                btn:SetText(text)
+                btn:SetScript("OnClick", onClick)
+                right = right - width - 4
+            end
+
+            if isOwner and isTargetCoLeader then
+                placeBtn("Demote co-leader", 110, function()
+                    local ok, err = GemOrderTest_RemoveCoLeader(room.id, name)
+                    if not ok then
+                        print("|cff00ccffGemOrderTest|r " .. (err or "Action failed."))
+                    else
+                        self:Refresh()
+                    end
+                end)
+            end
+
+            if isJewelcrafter then
+                placeBtn("Demote JC", 84, function()
                     local ok, err = GemOrderTest_DemoteCollaborator(room.id, name)
                     if not ok then
                         print("|cff00ccffGemOrderTest|r " .. (err or "Action failed."))
@@ -787,13 +860,20 @@ function UI:RefreshWorkshopMembers()
                         self:Refresh()
                     end
                 end)
-            else
-                local btn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-                btn:SetSize(84, 22)
-                btn:SetPoint("RIGHT", -8, 0)
-                btn:SetText("Make JC")
-                btn:SetScript("OnClick", function()
+            elseif not isTargetCoLeader then
+                placeBtn("Make JC", 84, function()
                     local ok, err = GemOrderTest_PromoteMember(room.id, name)
+                    if not ok then
+                        print("|cff00ccffGemOrderTest|r " .. (err or "Action failed."))
+                    else
+                        self:Refresh()
+                    end
+                end)
+            end
+
+            if isOwner and not isTargetCoLeader then
+                placeBtn("Make co-leader", 110, function()
+                    local ok, err = GemOrderTest_AddCoLeader(room.id, name)
                     if not ok then
                         print("|cff00ccffGemOrderTest|r " .. (err or "Action failed."))
                     else
@@ -927,7 +1007,7 @@ function UI:CreateStockPanel()
             GemOrderTest_RefreshLocalStock()
             print("|cff00ccffGemOrderTest|r Gem stock scanned and shared with the workshop.")
         elseif GemOrderTest.UI then
-            GemOrderTest.UI:Refresh()
+            GemOrderTest_RefreshUI()
             print("|cff00ccffGemOrderTest|r Gem stock refreshed.")
         end
     end)
@@ -1082,6 +1162,9 @@ function UI:RefreshStockPanel()
 end
 
 function UI:CreateRecipesPanel()
+    if GemOrderTest_InitRecipeEvents then
+        GemOrderTest_InitRecipeEvents()
+    end
     local f = self.frame
     local panel = CreateInsetPanel(f)
     panel:SetPoint("TOPLEFT", 12, -108)
@@ -1132,11 +1215,15 @@ function UI:CreateRecipesPanel()
         end
     end
 
-    panel.refreshBtn = CreateFrame("Button", "GemOrderTestRecipesRefresh", panel, "UIPanelButtonTemplate")
+    panel.refreshBtn = CreateFrame("Button", "GemOrderTestRecipesRefresh", panel, "SecureActionButtonTemplate, UIPanelButtonTemplate")
     panel.refreshBtn:SetSize(100, 22)
     panel.refreshBtn:SetPoint("TOPRIGHT", -16, -14)
     panel.refreshBtn:SetText("Refresh")
-    panel.refreshBtn:SetScript("OnClick", GemOrderTest_OnRecipesRefreshClick)
+    panel.refreshBtn:SetScript("OnShow", function(self)
+        if GemOrderTest_InitRecipesRefreshButton then
+            GemOrderTest_InitRecipesRefreshButton(self)
+        end
+    end)
 
     local scroll = CreateFrame("ScrollFrame", "GemOrderTestRecipesScroll", panel, "UIPanelScrollFrameTemplate")
     scroll:SetPoint("TOPLEFT", 12, -118)
@@ -1547,9 +1634,32 @@ function UI:CreateOrderForm()
     )
 
     y = y - ORDER_DIALOG_ROW_GAP
-    f.selectedRole = "DPS"
-    f.roleLabel = nil
-    f.roleDropdown = nil
+    f.roleLabel = CreateLabel(inset, "Role:", "GameFontHighlight")
+    f.roleLabel:SetPoint("TOPLEFT", 16, y)
+
+    f.selectedRole = nil
+    f.roleDropdown = CreateFrame("Frame", "GemOrderTestRoleDropdown", inset, "UIDropDownMenuTemplate")
+    f.roleDropdown:SetPoint("TOPLEFT", 90, y + 8)
+    UIDropDownMenu_Initialize(f.roleDropdown, function()
+        local info = UIDropDownMenu_CreateInfo()
+        info.text = ROLE_PLACEHOLDER
+        info.notCheckable = true
+        info.disabled = true
+        UIDropDownMenu_AddButton(info)
+
+        for _, role in ipairs(GemOrderTest_ROLES) do
+            info = UIDropDownMenu_CreateInfo()
+            info.text = role
+            MarkDropdownSelection(info, f.selectedRole == role)
+            info.func = function()
+                f.selectedRole = role
+                SetDropdownDisplayText(f.roleDropdown, role)
+            end
+            UIDropDownMenu_AddButton(info)
+        end
+    end)
+    SetDropdownDisplayText(f.roleDropdown, ROLE_PLACEHOLDER)
+    ConfigureOrderDropdown(f.roleDropdown, ORDER_DIALOG_DROPDOWN_WIDTH)
 
     y = y - ORDER_DIALOG_ROW_GAP
     f.gemLabels = {}
@@ -1627,7 +1737,8 @@ function UI:CreateOrderForm()
             print("|cff00ccffGemOrderTest|r Order submitted!")
             f.selectedGear = nil
             SetDropdownDisplayText(f.gearDropdown, "Select gear...")
-            f.selectedRole = "DPS"
+            f.selectedRole = nil
+            SetDropdownDisplayText(f.roleDropdown, ROLE_PLACEHOLDER)
             ResetNotesInput(f.notesInput)
             for i = 1, 3 do
                 f.selectedGems[i] = "None"
@@ -1677,6 +1788,14 @@ function UI:CreateQueueList()
     f.queueHeader = CreateLabel(inset, "Order Queue", "GameFontNormalLarge")
     f.queueHeader:SetPoint("TOPLEFT", 16, -12)
 
+    f.placeOrderBtn = CreateFrame("Button", nil, inset, "UIPanelButtonTemplate")
+    f.placeOrderBtn:SetSize(120, 22)
+    f.placeOrderBtn:SetText("Place Order")
+    f.placeOrderBtn:Hide()
+    f.placeOrderBtn:SetScript("OnClick", function()
+        self:OpenOrderDialog()
+    end)
+
     local scroll = CreateFrame("ScrollFrame", "GemOrderTestScroll", inset, "UIPanelScrollFrameTemplate")
 
     local content = CreateFrame("Frame", nil, scroll)
@@ -1688,6 +1807,7 @@ function UI:CreateQueueList()
     f.rows = {}
 
     self:LayoutQueuePanel()
+    LayoutQueueScrollbarOnce(inset)
 end
 
 function UI:ClearRows()
@@ -1705,14 +1825,23 @@ function UI:ClearRows()
     self.frame.rows = {}
 end
 
-function UI:CreateGemIconRow(parent, order, yOffset)
-    local x = 8
-    for _, gemName in ipairs(order.gems or {}) do
+function UI:CreateGemIconRow(parent, order, yOffset, startX)
+    local x = startX or 48
+    local y = yOffset
+    local gemsPerRow = 2
+    local gemLineSpacing = 32
+
+    for i, gemName in ipairs(order.gems or {}) do
+        if i > 1 and (i - 1) % gemsPerRow == 0 then
+            x = startX or 48
+            y = y - gemLineSpacing
+        end
+
         local itemId = GemOrderTest_GetGemItemId(gemName)
         if itemId then
             local btn = CreateFrame("Button", nil, parent)
             btn:SetSize(28, 28)
-            btn:SetPoint("TOPLEFT", x, yOffset)
+            btn:SetPoint("TOPLEFT", x, y)
             btn:SetNormalTexture(GetItemIcon(itemId) or "Interface\\Icons\\Inv_misc_gem_01")
 
             local border = btn:CreateTexture(nil, "OVERLAY")
@@ -1723,13 +1852,21 @@ function UI:CreateGemIconRow(parent, order, yOffset)
                 return itemId
             end)
 
-            x = x + 32
+            local label = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+            label:SetPoint("LEFT", btn, "RIGHT", 4, 0)
+            label:SetText(ColorizeGem(gemName))
+            label:SetJustifyH("LEFT")
+
+            x = x + 32 + label:GetStringWidth() + 24
         end
     end
 end
 
 function UI:GetOrderRowHeight(order)
-    local height = 88
+    local height = ORDER_ROW_HEIGHT + 8
+    if order.gems and #order.gems > 2 then
+        height = height + 30
+    end
     if order.notes and order.notes ~= "" then
         height = height + 14
     end
@@ -1770,8 +1907,9 @@ function UI:CreateOrderRow(order, yOffset)
     local title = row:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     title:SetPoint("TOPLEFT", 10, -8)
     title:SetText(string.format(
-        "%s  [%s]",
+        "%s  %s  [%s]",
         GemOrderTest_ColorizePlayer(order.player, order.class),
+        GemOrderTest_GetRoleLabel(order.role),
         GemOrderTest_GetOrderStatusLabel(order)
     ))
     title:SetWidth(contentWidth - 170)
@@ -1782,7 +1920,7 @@ function UI:CreateOrderRow(order, yOffset)
 
     if canManage and order.status ~= "completed" and order.status ~= "cancelled" then
         local btnArea = CreateFrame("Frame", nil, row)
-        btnArea:SetSize(90, 20)
+        btnArea:SetSize(154, 20)
         btnArea:SetPoint("TOPRIGHT", -8, -8)
 
         if order.status == "pending" then
@@ -1804,14 +1942,46 @@ function UI:CreateOrderRow(order, yOffset)
                 self:Refresh()
             end)
         end
+
+        if actionBtn and order.status ~= "completed" then
+            local downBtn = CreateFrame("Button", nil, btnArea, "UIPanelButtonTemplate")
+            downBtn:SetSize(24, 20)
+            downBtn:SetPoint("RIGHT", actionBtn, "LEFT", -6, 0)
+            downBtn:SetText("v")
+            downBtn:SetScript("OnClick", function()
+                local ok, err = GemOrderTest_MoveOrder(order.id, 1)
+                if not ok and err then
+                    print("|cff00ccffGemOrderTest|r " .. err)
+                end
+                self:Refresh()
+            end)
+
+            local upBtn = CreateFrame("Button", nil, btnArea, "UIPanelButtonTemplate")
+            upBtn:SetSize(24, 20)
+            upBtn:SetPoint("RIGHT", downBtn, "LEFT", -2, 0)
+            upBtn:SetText("^")
+            upBtn:SetScript("OnClick", function()
+                local ok, err = GemOrderTest_MoveOrder(order.id, -1)
+                if not ok and err then
+                    print("|cff00ccffGemOrderTest|r " .. err)
+                end
+                self:Refresh()
+            end)
+        end
     end
 
     local gearItemId = order.itemId or GemOrderTest_GetGearItemId(order.item)
+    local contentTop = -28
+    local contentX = 48
+
+    local gearLabel = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    gearLabel:SetPoint("TOPLEFT", 10, contentTop - 2)
+    gearLabel:SetText("Gear:")
 
     if gearItemId then
         local gearIcon = CreateFrame("Button", nil, row)
         gearIcon:SetSize(28, 28)
-        gearIcon:SetPoint("TOPLEFT", 8, -20)
+        gearIcon:SetPoint("TOPLEFT", contentX, contentTop)
         gearIcon:SetNormalTexture(GetItemIcon(gearItemId) or "Interface\\Icons\\INV_Misc_QuestionMark")
 
         local borderTex = gearIcon:CreateTexture(nil, "OVERLAY")
@@ -1827,12 +1997,17 @@ function UI:CreateOrderRow(order, yOffset)
     end
 
     local itemText = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    itemText:SetPoint("TOPLEFT", gearItemId and 44 or 8, -24)
-    itemText:SetWidth(contentWidth - 60)
+    itemText:SetPoint("TOPLEFT", gearItemId and (contentX + 32) or contentX, contentTop - 4)
+    itemText:SetWidth(contentWidth - (gearItemId and 120 or 88))
     itemText:SetJustifyH("LEFT")
-    itemText:SetText(order.item or "Unknown item")
+    itemText:SetText(ColorizeItem(order.item or "Unknown item"))
 
-    self:CreateGemIconRow(row, order, -52)
+    local gemsTop = contentTop - 34
+    local gemsLabel = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    gemsLabel:SetPoint("TOPLEFT", 10, gemsTop - 2)
+    gemsLabel:SetText("Gems:")
+
+    self:CreateGemIconRow(row, order, gemsTop, contentX)
 
     if order.notes and order.notes ~= "" then
         local notes = row:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
@@ -1848,7 +2023,17 @@ function UI:CreateOrderRow(order, yOffset)
     local canManageWorkshop = room and GemOrderTest_CanManageWorkshop(room, player)
 
     if canManageWorkshop then
-        -- v0.6.0 had no leader Delete button (added v0.7.40)
+        local deleteBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+        deleteBtn:SetSize(60, 20)
+        deleteBtn:SetPoint("TOPRIGHT", -8, -32)
+        deleteBtn:SetText("Delete")
+        deleteBtn:SetScript("OnClick", function()
+            local ok, err = GemOrderTest_DeleteOrder(order.id)
+            if not ok and err then
+                print("|cff00ccffGemOrderTest|r " .. err)
+            end
+            self:Refresh()
+        end)
     elseif (isOwner or canManage) and order.status == "pending" then
         local cancelBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
         cancelBtn:SetSize(60, 20)
@@ -1902,16 +2087,18 @@ function UI:Refresh()
     if GemOrderTest_HasJoinedWorkshop() and room then
         self.frame.roomLabel:SetText("Workshop: |cff00ff00" .. room.name .. "|r")
     else
-        self.frame.roomLabel:SetText("|cffffcc00Select a workshop on the Workshop tab to unlock Orders and Stock.|r")
+        self.frame.roomLabel:SetText("|cffffcc00Select a workshop on the Workshop tab to unlock Orders, Stock and Recipes.|r")
     end
 
     if self.activeTab == "workshop" then
         self:RefreshWorkshopPanel()
     elseif self.activeTab == "stock" and GemOrderTest_HasJoinedWorkshop() then
         self:RefreshStockPanel()
+    elseif self.activeTab == "recipes" and GemOrderTest_HasJoinedWorkshop() then
+        self:RefreshRecipesPanel()
     end
 
-    if self.activeTab == "orders" then
+    if self.activeTab == "orders" or self.activeTab == "completed" then
         self:LayoutQueuePanel()
     end
 
@@ -1920,7 +2107,22 @@ function UI:Refresh()
         return
     end
     if self.activeTab == "orders" and GemOrderTest_HasJoinedWorkshop() then
-        local orders = GemOrderTest_GetAllOrders()
+        local orders = GemOrderTest_GetActiveOrders()
+        local y = 0
+        local lastGroup = nil
+        for _, order in ipairs(orders) do
+            local group = order.status == "in_progress" and "in_progress" or "pending"
+            if lastGroup == "pending" and group == "in_progress" then
+                y = y + self:CreateQueueSeparator(y, "Being worked on")
+            end
+            self:CreateOrderRow(order, y)
+            y = y + self:GetOrderRowHeight(order) + ORDER_ROW_GAP
+            lastGroup = group
+        end
+        self.frame.content:SetWidth(GetQueueContentWidth())
+        self.frame.content:SetHeight(math.max(200, y))
+    elseif self.activeTab == "completed" and GemOrderTest_HasJoinedWorkshop() then
+        local orders = GemOrderTest_GetCompletedOrders()
         local y = 0
         for _, order in ipairs(orders) do
             self:CreateOrderRow(order, y)
@@ -1934,9 +2136,6 @@ function UI:Refresh()
 end
 
 function UI:Toggle()
-    if not self.frame then
-        return
-    end
     if self.frame:IsShown() then
         SafeCloseDropdownMenus()
         self.frame:Hide()
@@ -1964,4 +2163,3 @@ function UI:Hide()
     SafeCloseDropdownMenus()
     self.frame:Hide()
 end
-

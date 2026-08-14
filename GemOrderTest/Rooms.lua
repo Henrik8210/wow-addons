@@ -1,4 +1,4 @@
-GemOrderTest = GemOrderTest or {}
+﻿GemOrderTest = GemOrder or {}
 
 local function EnsureDB()
     GemOrderTestDB = GemOrderTestDB or {}
@@ -460,7 +460,6 @@ function GemOrderTest_ApplyRoom(room)
     end
     GemOrderTestDB.rooms[room.id] = room
     if GemOrderTest.UI then
-        GemOrderTest.UI:Refresh()
+        GemOrderTest_RefreshUI()
     end
 end
-

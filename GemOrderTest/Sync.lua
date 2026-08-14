@@ -1,6 +1,6 @@
-local ADDON_NAME = ...
+﻿local ADDON_NAME = ...
 
-GemOrderTest = GemOrderTest or {}
+GemOrderTest = GemOrder or {}
 local Sync = {}
 GemOrderTest.Sync = Sync
 
@@ -365,7 +365,7 @@ function Sync:OnAddonMessage(prefix, message, channel, sender)
         GemOrderTestDB.orders[order.id] = order
         GemOrderTest_AppendOrderToQueue(roomId, order.id)
         if GemOrderTest.UI then
-            GemOrderTest.UI:Refresh()
+            GemOrderTest_RefreshUI()
         end
     elseif msgType == MSG_STATUS then
         local orderId = parts[2]
@@ -380,7 +380,7 @@ function Sync:OnAddonMessage(prefix, message, channel, sender)
                 order.assignedTo = order.updatedBy
             end
             if GemOrderTest.UI then
-                GemOrderTest.UI:Refresh()
+                GemOrderTest_RefreshUI()
             end
         end
     elseif msgType == MSG_REMOVE then
@@ -391,7 +391,7 @@ function Sync:OnAddonMessage(prefix, message, channel, sender)
         end
         GemOrderTestDB.orders[orderId] = nil
         if GemOrderTest.UI then
-            GemOrderTest.UI:Refresh()
+            GemOrderTest_RefreshUI()
         end
     elseif msgType == MSG_REQUEST then
         local requester = parts[2]
@@ -496,7 +496,7 @@ function Sync:OnAddonMessage(prefix, message, channel, sender)
             end
             GemOrderTest_ApplyRoom(room)
             if GemOrderTest.UI then
-                GemOrderTest.UI:Refresh()
+                GemOrderTest_RefreshUI()
             end
         end
     elseif msgType == MSG_STOCK then
@@ -523,4 +523,3 @@ end
 function Sync:GenerateOrderId()
     return string.format("%s-%d", UnitName("player"), time())
 end
-

@@ -1,4 +1,4 @@
-SLASH_GEMORDERTEST1 = "/gotest"
+﻿SLASH_GEMORDERTEST1 = "/gotest"
 SLASH_GEMORDERTEST2 = "/got"
 SLASH_GEMORDERTEST3 = "/gott"
 
@@ -37,14 +37,12 @@ SlashCmdList["GEMORDERTEST"] = function(msg)
             print("|cff00ccffGemOrderTest|r " .. err)
         else
             print("|cff00ccffGemOrderTest|r Selected workshop.")
-            if GemOrderTest.UI and GemOrderTest.UI.frame then
-                GemOrderTest.UI:Refresh()
-            end
+            GemOrderTest_RefreshUI()
         end
         return
     end
 
-    GemOrderTest_EnsureUI()
-    GemOrderTest.UI:Toggle()
+    if GemOrderTest_EnsureUI() then
+        GemOrderTest.UI:Toggle()
+    end
 end
-

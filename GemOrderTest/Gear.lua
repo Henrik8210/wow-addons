@@ -1,4 +1,4 @@
--- Socketed gear from Mount Hyjal & Black Temple (Lists tab on guild sheet)
+﻿-- Socketed gear from Mount Hyjal & Black Temple (Lists tab on guild sheet)
 GemOrderTest_GearRaids = { "Mount Hyjal", "Black Temple" }
 
 GemOrderTest_Gear = {
@@ -84,4 +84,3 @@ function GemOrderTest_GetGearByRaid(raid)
     end)
     return results
 end
-
