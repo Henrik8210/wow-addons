@@ -1,0 +1,16 @@
+---
+description: Keep GemOrder changes committed and pushed to GitHub
+alwaysApply: true
+---
+
+# Git sync for wow-addons
+
+Remote: https://github.com/Henrik8210/wow-addons.git (branch `main`).
+
+After completing meaningful work on GemOrder or GemOrderTest:
+
+1. Commit all relevant changes with a clear message (why, not just what).
+2. Push to `origin/main` unless the user asked not to push.
+3. Bump `## Version:` in the relevant `.toc` when shipping a new release build.
+
+Do not leave addon code only on disk or in the WoW AddOns folder — the repo is the source of truth.
