@@ -3,11 +3,6 @@ SLASH_GEMORDER2 = "/gorder"
 SLASH_GEMORDER3 = "/gor"
 
 SlashCmdList["GEMORDER"] = function(msg)
-    if not GemOrder or not GemOrder.UI then
-        print("|cffff0000GemOrder|r is not loaded yet.")
-        return
-    end
-
     msg = string.lower(strtrim(msg or ""))
 
     if msg == "stock" then
@@ -42,10 +37,12 @@ SlashCmdList["GEMORDER"] = function(msg)
             print("|cff00ccffGemOrder|r " .. err)
         else
             print("|cff00ccffGemOrder|r Selected workshop.")
-            GemOrder.UI:Refresh()
+            GemOrder_RefreshUI()
         end
         return
     end
 
-    GemOrder.UI:Toggle()
+    if GemOrder_EnsureUI() then
+        GemOrder.UI:Toggle()
+    end
 end

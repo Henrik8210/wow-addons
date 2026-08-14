@@ -50,7 +50,7 @@ StaticPopupDialogs["GEMORDER_CONFIRM_CLOSE_WORKSHOP"] = {
             print("|cff00ccffGemOrder|r Workshop closed.")
         end
         if GemOrder.UI then
-            GemOrder.UI:Refresh()
+            GemOrder_RefreshUI()
         end
     end,
     timeout = 0,
@@ -431,6 +431,9 @@ function UI:RefreshJoinDropdownCache()
 end
 
 function UI:Init()
+    if self.frame then
+        return
+    end
     self:BuildDropdownCaches()
     self:CreateMainFrame()
     self:CreateTabs()
@@ -1058,7 +1061,7 @@ function UI:CreateStockPanel()
             GemOrder_RefreshLocalStock()
             print("|cff00ccffGemOrder|r Gem stock scanned and shared with the workshop.")
         elseif GemOrder.UI then
-            GemOrder.UI:Refresh()
+            GemOrder_RefreshUI()
             print("|cff00ccffGemOrder|r Gem stock refreshed.")
         end
     end)

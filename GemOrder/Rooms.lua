@@ -460,6 +460,6 @@ function GemOrder_ApplyRoom(room)
     end
     GemOrderDB.rooms[room.id] = room
     if GemOrder.UI then
-        GemOrder.UI:Refresh()
+        GemOrder_RefreshUI()
     end
 end

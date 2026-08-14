@@ -365,7 +365,7 @@ function Sync:OnAddonMessage(prefix, message, channel, sender)
         GemOrderDB.orders[order.id] = order
         GemOrder_AppendOrderToQueue(roomId, order.id)
         if GemOrder.UI then
-            GemOrder.UI:Refresh()
+            GemOrder_RefreshUI()
         end
     elseif msgType == MSG_STATUS then
         local orderId = parts[2]
@@ -380,7 +380,7 @@ function Sync:OnAddonMessage(prefix, message, channel, sender)
                 order.assignedTo = order.updatedBy
             end
             if GemOrder.UI then
-                GemOrder.UI:Refresh()
+                GemOrder_RefreshUI()
             end
         end
     elseif msgType == MSG_REMOVE then
@@ -391,7 +391,7 @@ function Sync:OnAddonMessage(prefix, message, channel, sender)
         end
         GemOrderDB.orders[orderId] = nil
         if GemOrder.UI then
-            GemOrder.UI:Refresh()
+            GemOrder_RefreshUI()
         end
     elseif msgType == MSG_REQUEST then
         local requester = parts[2]
@@ -496,7 +496,7 @@ function Sync:OnAddonMessage(prefix, message, channel, sender)
             end
             GemOrder_ApplyRoom(room)
             if GemOrder.UI then
-                GemOrder.UI:Refresh()
+                GemOrder_RefreshUI()
             end
         end
     elseif msgType == MSG_STOCK then

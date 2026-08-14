@@ -56,10 +56,31 @@ function GemOrder_GetOrderStatusLabel(order)
     return GemOrder_GetStatusLabel(order.status)
 end
 
-GemOrder.VERSION = "0.7.73"
+GemOrder.VERSION = "0.7.74"
 
 function GemOrder_GetVersion()
     return GemOrder.VERSION
+end
+
+function GemOrder_RefreshUI()
+    if GemOrder.UI and GemOrder.UI.frame then
+        GemOrder.UI:Refresh()
+    end
+end
+
+function GemOrder_EnsureUI()
+    if GemOrder.UI and GemOrder.UI.frame then
+        return true
+    end
+    local ok, err = pcall(function()
+        GemOrder_HookDropdownMenuTooltips()
+        GemOrder.UI:Init()
+    end)
+    if not ok then
+        print("|cffff0000GemOrder UI error:|r " .. tostring(err))
+        return false
+    end
+    return GemOrder.UI and GemOrder.UI.frame ~= nil
 end
 
 GemOrder_ROLES = { "Tank", "Healer", "DPS" }
@@ -550,15 +571,7 @@ local function OnAddonLoaded(_, addon)
         print("|cffff0000GemOrder minimap/sync error:|r " .. tostring(err))
     end
 
-    ok, err = pcall(function()
-        GemOrder_HookDropdownMenuTooltips()
-        GemOrder.UI:Init()
-    end)
-    if not ok then
-        print("|cffff0000GemOrder UI error:|r " .. tostring(err))
-    end
-
-    if GemOrder.Minimap.button or (GemOrder.UI and GemOrder.UI.frame) then
+    if GemOrder.Minimap.button then
         print("|cff00ccffGemOrder|r loaded. Click the gem icon on your minimap, or type |cff00ccff/gemorder|r.")
     else
         print("|cffff0000GemOrder failed to load.|r Check chat for errors.")
@@ -589,7 +602,7 @@ local function TryGuildSync()
         end
     end
 
-    if GemOrder.UI then
+    if GemOrder.UI and GemOrder.UI.frame then
         GemOrder.UI:Refresh()
     end
 
@@ -632,7 +645,7 @@ boot:SetScript("OnEvent", function(_, event, arg1)
         OnPlayerLogin()
     elseif event == "GUILD_ROSTER_UPDATE" then
         OnGuildReady()
-        if GemOrder.UI then
+        if GemOrder.UI and GemOrder.UI.frame then
             GemOrder.UI:Refresh()
         end
     end

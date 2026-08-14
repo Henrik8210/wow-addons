@@ -68,6 +68,9 @@ function MinimapBtn:Init()
     button:RegisterForDrag("LeftButton")
 
     button:SetScript("OnClick", function(_, mouseButton)
+        if not GemOrder_EnsureUI() then
+            return
+        end
         if mouseButton == "RightButton" then
             if GemOrder.UI then
                 GemOrder.UI:ShowTab("workshop")

@@ -118,7 +118,7 @@ function GemOrder_RefreshLocalStock()
     if GemOrder_ShouldShareStock() then
         GemOrder_ShareWorkshopStock()
     end
-    if GemOrder.UI then
+    if GemOrder.UI and GemOrder.UI.frame then
         GemOrder.UI:Refresh()
     end
 end
@@ -187,7 +187,7 @@ function GemOrder_ApplyStockReport(player, counts, source)
             updatedAt = time(),
         }
     end
-    if GemOrder.UI then
+    if GemOrder.UI and GemOrder.UI.frame then
         GemOrder.UI:Refresh()
     end
 end
@@ -214,33 +214,3 @@ function GemOrder_GetStockListing(counts)
     end)
     return lines
 end
-
-local stockWatcher = CreateFrame("Frame")
-local stockRefreshPending = false
-
-local function QueueAutoStockShare()
-    if not GemOrder_ShouldShareStock or not GemOrder_ShouldShareStock() then
-        return
-    end
-    if stockRefreshPending then
-        return
-    end
-    stockRefreshPending = true
-
-    local function run()
-        stockRefreshPending = false
-        if GemOrder_ShouldShareStock() then
-            GemOrder_RefreshLocalStock()
-        end
-    end
-
-    if C_Timer and C_Timer.After then
-        C_Timer.After(0.75, run)
-    else
-        run()
-    end
-end
-
-stockWatcher:RegisterEvent("BAG_UPDATE")
-stockWatcher:RegisterEvent("PLAYERBANKSLOTS_CHANGED")
-stockWatcher:SetScript("OnEvent", QueueAutoStockShare)

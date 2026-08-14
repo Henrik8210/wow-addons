@@ -102,7 +102,7 @@ function GemOrder_RefreshRecipesSyncOnly()
         GemOrder.Sync:RequestSync()
     end
     if GemOrder.UI then
-        GemOrder.UI:Refresh()
+        GemOrder_RefreshUI()
     end
     print("|cff00ccffGemOrder|r Recipe list refreshed.")
 end
@@ -185,7 +185,7 @@ local function ApplyRecipeScanResult(known, numSkills, source)
     StoreLocalRecipeReport(known)
     GemOrder.Sync:BroadcastRecipes(known)
     if GemOrder.UI then
-        GemOrder.UI:Refresh()
+        GemOrder_RefreshUI()
     end
 
     local knownCount = CountKnown(known)
@@ -330,7 +330,7 @@ function GemOrder_ApplyRecipeReport(player, itemIds)
         updatedAt = time(),
     }
     if GemOrder.UI then
-        GemOrder.UI:Refresh()
+        GemOrder_RefreshUI()
     end
 end
 
@@ -412,7 +412,7 @@ local function QueuePassiveRecipeScan()
         StoreLocalRecipeReport(known)
         GemOrder.Sync:BroadcastRecipes(known)
         if GemOrder.UI then
-            GemOrder.UI:Refresh()
+            GemOrder_RefreshUI()
         end
     end
 
