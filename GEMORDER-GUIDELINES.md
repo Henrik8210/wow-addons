@@ -153,9 +153,213 @@ Maintain manually:
 
 ---
 
-## Logout / taint rules (learned from bisect)
+## Logout taint case study (Aug 2026)
 
-These patterns **broke logout** and must not return without a retest:
+**Read this before adding UI hooks, bag watchers, or Blizzard frame integration to any WoW addon — not just GemOrder.**
+
+### Symptom
+
+On logout, WoW showed:
+
+> *"&lt;AddonName&gt; has been blocked from an action only available to the Blizzard UI."*
+
+Logout was blocked. The problem could appear **even if the player never opened the addon** after `/reload` — meaning **login-time code** was enough to taint the session.
+
+### What “taint” means here
+
+WoW marks code paths as **tainted** when addon Lua touches **protected Blizzard UI** (frames, dropdowns, popups, logout flow). Once tainted, the client blocks actions that must stay secure — logout/escape is a common victim.
+
+Important implications:
+
+- Taint can be set at **addon load** or **PLAYER_LOGIN**, not only when the user opens your window.
+- “Cleanup on logout” hooks often **make it worse** — you are still running addon code during the protected logout sequence.
+- Parsing a `.lua` file listed in `.toc` runs its top-level code at load, even if you never call `Init()`.
+
+### How we found it (bisect summary)
+
+We used a parallel **GemOrderTest** addon (separate saved vars, separate addon-message prefix) and stripped features until logout passed.
+
+| Build | Logout | Notes |
+|-------|--------|-------|
+| Full GemOrder ~v0.7.73 | **FAIL** | Even without opening UI |
+| GemOrderTest v0.6.0-r1 (stripped) | **PASS** | No stock watcher, lazy UI, no StaticPopup at load |
+| Removed `stockWatcher` + lazy UI (v0.7.74) | Still fail | More culprits remained |
+| Removed logout prep hooks (v0.7.75) | Still fail | |
+| Deferred recipe events (v0.7.76) | Still fail | |
+| Reinstated dropdown `SetScript` + StaticPopup at load (v0.7.79) | **FAIL again** | Confirmed regressions |
+| Lazy StaticPopup + `hooksecurefunc` tooltips (v0.7.80) | **PASS** | Current production pattern |
+
+**Lesson:** Never assume one fix is enough. Always run the [logout smoke test](#mandatory-logout-smoke-test) after re-adding features.
+
+### Root causes we confirmed
+
+#### 1. Bag/bank watcher at login (`BAG_UPDATE`, `PLAYERBANKSLOTS_CHANGED`)
+
+```lua
+-- BAD: runs as soon as bags are scanned at login
+stockWatcher:RegisterEvent("BAG_UPDATE")
+stockWatcher:SetScript("OnEvent", function()
+    ScanBagsAndShareWithGuild()  -- addon logic + sync during login
+end)
+```
+
+**Why it breaks:** Login triggers bag events. Addon code runs before the player touches your UI, tainting protected paths.
+
+**Instead:** Scan/share only on explicit user action (button click) or when your own window is open — not on every bag change at login.
+
+---
+
+#### 2. “Helpful” logout cleanup hooks
+
+```lua
+-- BAD: fighting Blizzard during logout
+frame:RegisterEvent("PLAYER_LEAVING_WORLD")
+frame:RegisterEvent("LOGOUT")
+frame:SetScript("OnEvent", function()
+    PrepareForLogout()  -- hides frames, edits UISpecialFrames, clears scripts
+end)
+```
+
+**Why it breaks:** Logout is a secure Blizzard action. Addon code that mutates `UISpecialFrames`, hides frames, or clears scripts on those events interferes with the client’s own teardown.
+
+**Instead:** Do not hook logout to “clean up.” Hide your frames when the user closes them. If you must register in `UISpecialFrames`, avoid it entirely (see below).
+
+---
+
+#### 3. `UISpecialFrames` registration
+
+```lua
+-- BAD at load or Init: ties your frame into Blizzard’s escape/logout stack
+tinsert(UISpecialFrames, frame:GetName())
+```
+
+**Why it breaks:** That list is part of protected UI handling (escape key, logout ordering).
+
+**Instead:** Prefer closing your frame with your own close button. If you need escape-to-close, research secure handlers for your WoW flavor — and retest logout every time.
+
+---
+
+#### 4. `StaticPopupDialogs` at file load
+
+```lua
+-- BAD in UI.lua (loaded from .toc at login):
+StaticPopupDialogs["MY_ADDON_CONFIRM"] = { ... }
+```
+
+**Why it breaks:** The table is Blizzard’s. Writing to it when the file parses runs at **login**, even if the user never opens your addon.
+
+**Instead:** Register the dialog lazily — first time you need it:
+
+```lua
+local function EnsureMyPopupRegistered()
+    if MyAddon.popupRegistered then return end
+    MyAddon.popupRegistered = true
+    StaticPopupDialogs = StaticPopupDialogs or {}
+    StaticPopupDialogs["MY_ADDON_CONFIRM"] = { ... }
+end
+```
+
+Call `EnsureMyPopupRegistered()` inside the button handler that shows the popup.
+
+---
+
+#### 5. `SetScript` on Blizzard dropdown list buttons
+
+```lua
+-- BAD: mutates DropDownList1Button3 etc.
+local button = _G["DropDownList1Button" .. index]
+button:SetScript("OnEnter", function(self)
+    GameTooltip:SetHyperlink("item:" .. itemId)
+end)
+```
+
+**Why it breaks:** Dropdown list buttons are Blizzard templates. Replacing their scripts taints the dropdown system; logout/escape can fail after the dropdown was opened once.
+
+**Instead:** Use `hooksecurefunc` on `UIDropDownMenuButton_OnEnter` / `OnLeave`, and **scope** it to your addon’s dropdowns only (check `UIDROPDOWNMENU_OPEN_MENU:GetName()`). Show tooltips from the hook; do not replace the button’s script.
+
+---
+
+#### 6. Eager UI initialization on `ADDON_LOADED`
+
+```lua
+-- BAD: builds full UI + hooks at login
+if event == "ADDON_LOADED" then
+    MyAddon.UI:Init()
+    HookAllDropdowns()
+end
+```
+
+**Why it breaks:** Creates frames, hooks, and dropdown wiring before the player asked for UI — increases surface area for taint at login.
+
+**Instead:** **Lazy UI** — init on first slash command or minimap click:
+
+```lua
+function MyAddon_EnsureUI()
+    if MyAddon.UI.frame then return true end
+    MyAddon.UI:Init()
+    return MyAddon.UI.frame ~= nil
+end
+```
+
+Files in `.toc` still **parse** at load; avoid top-level side effects in those files.
+
+---
+
+#### 7. Login-time recipe / trade-skill scanning
+
+Auto-scanning professions or syncing recipe data on `PLAYER_LOGIN` kept failure modes alive until we deferred the trade-skill event watcher until the Recipes **panel** was first built.
+
+**Instead:** Register `TRADE_SKILL_SHOW` / `TRADE_SKILL_UPDATE` only when the user opens the relevant tab.
+
+---
+
+### Mandatory logout smoke test
+
+Run this **before every release** and after re-adding any UI integration:
+
+1. `/reload`
+2. **Do not open the addon** → try logout → must succeed
+3. Open addon, use dropdowns / popups / order flow → try logout → must succeed
+4. If either fails, treat the last change as suspect — bisect in GemOrderTest if needed
+
+Record results in `GemOrderTest/BISECT.txt` when debugging.
+
+---
+
+### Red flags for code review (any addon)
+
+Stop and plan a logout test if the diff includes:
+
+- [ ] `RegisterEvent("BAG_UPDATE")` or bank slot events for automatic actions
+- [ ] `RegisterEvent("LOGOUT")` or `PLAYER_LEAVING_WORLD` for cleanup
+- [ ] `tinsert(UISpecialFrames, ...)`
+- [ ] `StaticPopupDialogs[...] =` at file scope (outside a lazy registrar)
+- [ ] `SetScript` on `DropDownList` / `DropDownList*Button*` frames
+- [ ] `CloseDropDownMenus()` or hiding `DropDownList` from addon code during logout prep
+- [ ] Full UI `Init()` on `ADDON_LOADED` or `PLAYER_LOGIN`
+- [ ] `hooksecurefunc` on global UI without scoping to your frames only (lower risk than SetScript, still test)
+
+### Safe patterns (checklist)
+
+| Need | Safe approach |
+|------|----------------|
+| Main window | Lazy init on first open |
+| Confirm dialog | Lazy `StaticPopupDialogs` registration |
+| Dropdown item tooltips | `hooksecurefunc` + scope to your dropdown names |
+| Selected item tooltip | `OnEnter` on **your** dropdown arrow button (you own it) |
+| Stock / bag sync | Manual refresh button or scan when your UI opens |
+| Recipe scan | Register trade events when relevant panel opens |
+| Close on escape | Avoid `UISpecialFrames` unless tested; prefer explicit close |
+
+### Fixed version reference
+
+Production **v0.7.80** is the first known-good build with all of the above applied. See git history around `f15eb4f` … `c300068` for the bisect trail.
+
+---
+
+## Logout / taint quick reference
+
+Condensed list for day-to-day work:
 
 | Pattern | Why |
 |---------|-----|
@@ -172,11 +376,7 @@ These patterns **broke logout** and must not return without a retest:
 - **Dropdown row tooltips:** `hooksecurefunc("UIDropDownMenuButton_OnEnter", …)` scoped to GemOrder dropdown names — not `SetScript` on list buttons
 - **Recipe events:** start trade-skill watcher when Recipes panel is built, not at login
 
-When re-adding features, test logout in this order:
-
-1. `/reload` → logout **without** opening GemOrder
-2. Open UI, use dropdowns → logout
-3. Only then treat the change as safe
+When re-adding features, follow the [mandatory logout smoke test](#mandatory-logout-smoke-test) above.
 
 ---
 
@@ -197,7 +397,7 @@ GemOrderTest uses separate saved variables and addon messages, so it does not co
 - [ ] Version bumped in `GemOrder.toc` and `Core.lua`
 - [ ] `.\scripts\sync-gemordertest.ps1` run
 - [ ] Both folders copied to WoW AddOns path
-- [ ] Logout smoke-test (main GemOrder)
+- [ ] Logout smoke-test (main GemOrder) — see [case study](#logout-taint-case-study-aug-2026)
 - [ ] Committed and pushed to `origin/main`
 
 ---
