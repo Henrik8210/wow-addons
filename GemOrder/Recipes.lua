@@ -294,9 +294,7 @@ function GemOrder_ShareWorkshopRecipes()
     local report = GemOrderDB.recipes.jcReports[player]
     if report and report.itemIds then
         GemOrder.Sync:BroadcastRecipes(report.itemIds)
-        return
     end
-    GemOrder_AutoScanRecipes(true)
 end
 
 function GemOrder_AutoScanRecipes(silent)
@@ -441,9 +439,6 @@ local function OnPlayerLogin()
             local report = GemOrderDB.recipes.jcReports[player]
             if report and report.itemIds and CountKnown(report.itemIds) > 0 then
                 GemOrder.Sync:BroadcastRecipes(report.itemIds)
-            end
-            if GemOrder_IsJewelcraftingOpen() then
-                GemOrder_AutoScanRecipes(true)
             end
         end)
     end

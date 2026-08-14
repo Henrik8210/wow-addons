@@ -56,7 +56,7 @@ function GemOrder_GetOrderStatusLabel(order)
     return GemOrder_GetStatusLabel(order.status)
 end
 
-GemOrder.VERSION = "0.7.74"
+GemOrder.VERSION = "0.7.75"
 
 function GemOrder_GetVersion()
     return GemOrder.VERSION
@@ -629,17 +629,9 @@ end
 local boot = CreateFrame("Frame")
 boot:RegisterEvent("ADDON_LOADED")
 boot:RegisterEvent("PLAYER_LOGIN")
-boot:RegisterEvent("PLAYER_LEAVING_WORLD")
-boot:RegisterEvent("PLAYER_LOGOUT")
 boot:RegisterEvent("GUILD_ROSTER_UPDATE")
 boot:SetScript("OnEvent", function(_, event, arg1)
-    if event == "PLAYER_LEAVING_WORLD" or event == "PLAYER_LOGOUT" then
-        if GemOrder_PrepareForLogout then
-            GemOrder_PrepareForLogout()
-        else
-            GemOrder._loggingOut = true
-        end
-    elseif event == "ADDON_LOADED" then
+    if event == "ADDON_LOADED" then
         OnAddonLoaded(event, arg1)
     elseif event == "PLAYER_LOGIN" then
         OnPlayerLogin()
