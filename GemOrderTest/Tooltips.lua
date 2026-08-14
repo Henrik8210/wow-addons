@@ -63,6 +63,25 @@ function GemOrderTest_ShowItemTooltip(owner, itemId, anchor)
     end
     GameTooltip:SetOwner(owner, anchor or "ANCHOR_RIGHT")
     GameTooltip:SetHyperlink("item:" .. itemId)
+    if GameTooltip.SetClampedToScreen then
+        GameTooltip:SetClampedToScreen(true)
+    end
+    GameTooltip:Show()
+end
+
+function GemOrderTest_ShowDropdownItemTooltip(itemId)
+    if not itemId then
+        return
+    end
+    GameTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+    GameTooltip:ClearAllPoints()
+    local x, y = GetCursorPosition()
+    local scale = UIParent:GetEffectiveScale()
+    GameTooltip:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", (x / scale) + 16, y / scale)
+    GameTooltip:SetHyperlink("item:" .. itemId)
+    if GameTooltip.SetClampedToScreen then
+        GameTooltip:SetClampedToScreen(true)
+    end
     GameTooltip:Show()
 end
 
@@ -72,6 +91,9 @@ function GemOrderTest_ShowLinkTooltip(owner, link, anchor)
     end
     GameTooltip:SetOwner(owner, anchor or "ANCHOR_RIGHT")
     GameTooltip:SetHyperlink(link)
+    if GameTooltip.SetClampedToScreen then
+        GameTooltip:SetClampedToScreen(true)
+    end
     GameTooltip:Show()
 end
 
@@ -165,6 +187,65 @@ function GemOrderTest_AttachItemTooltip(frame, getLinkFn)
         end
     end)
     frame:SetScript("OnLeave", GemOrderTest_HideTooltip)
+end
+
+local function StripColorCodes(text)
+    if not text then
+        return nil
+    end
+    return text:gsub("|c%x%x%x%x%x%x%x", ""):gsub("|r", "")
+end
+
+local function GetDropdownButtonText(button)
+    if not button or not button.GetName then
+        return nil
+    end
+    local textFrame = _G[button:GetName() .. "NormalText"]
+    if textFrame and textFrame.GetText then
+        return StripColorCodes(textFrame:GetText())
+    end
+    if button.GetText then
+        return StripColorCodes(button:GetText())
+    end
+    return nil
+end
+
+local function LookupItemIdByDisplayText(text)
+    if not text or text == "" then
+        return nil
+    end
+    if GemOrderTest_GemByName and GemOrderTest_GemByName[text] then
+        return GemOrderTest_GemByName[text].itemId
+    end
+    if GemOrderTest_Gear then
+        for _, gear in ipairs(GemOrderTest_Gear) do
+            if gear.label == text or gear.name == text then
+                return gear.itemId
+            end
+        end
+    end
+    return nil
+end
+
+local function GetDropdownButtonItemId(button)
+    if not button then
+        return nil
+    end
+
+    local itemId = button.gemOrderItemId
+    local index = button.GetID and button:GetID()
+    if (not itemId or itemId <= 0) and index and GemOrderTest._dropdownItemTooltips then
+        itemId = GemOrderTest._dropdownItemTooltips[index]
+    end
+    if type(itemId) == "number" and itemId > 0 then
+        return itemId
+    end
+
+    if type(button.value) == "number" and button.value > 0 then
+        return button.value
+    end
+
+    return LookupItemIdByDisplayText(GetDropdownButtonText(button))
 end
 
 local function IsGemOrderItemDropdown(dropdown)
@@ -317,9 +398,9 @@ function GemOrderTest_HookDropdownMenuTooltips()
         if not IsGemOrderItemDropdown(UIDROPDOWNMENU_OPEN_MENU) then
             return
         end
-        local itemId = self.gemOrderItemId
-        if type(itemId) == "number" and itemId > 0 then
-            GemOrderTest_ShowItemTooltip(self, itemId, "ANCHOR_RIGHT")
+        local itemId = GetDropdownButtonItemId(self)
+        if itemId then
+            GemOrderTest_ShowDropdownItemTooltip(itemId)
         end
     end)
 
@@ -327,9 +408,7 @@ function GemOrderTest_HookDropdownMenuTooltips()
         if not self or not IsGemOrderItemDropdown(UIDROPDOWNMENU_OPEN_MENU) then
             return
         end
-        if self.gemOrderItemId then
-            GemOrderTest_HideTooltip()
-        end
+        GemOrderTest_HideTooltip()
     end)
 
     if UIDropDownMenu_CreateButtons then

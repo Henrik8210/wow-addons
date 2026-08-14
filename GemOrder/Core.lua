@@ -57,7 +57,7 @@ function GemOrder_GetOrderStatusLabel(order)
     return GemOrder_GetStatusLabel(order.status)
 end
 
-GemOrder.VERSION = "0.7.83"
+GemOrder.VERSION = "0.7.84"
 
 function GemOrder_GetVersion()
     return GemOrder.VERSION
