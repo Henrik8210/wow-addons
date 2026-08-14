@@ -187,7 +187,7 @@ function GemOrderTest_ApplyStockReport(player, counts, source)
             updatedAt = time(),
         }
     end
-    if GemOrderTest.UI then
+    if GemOrderTest.UI and GemOrderTest.UI.frame then
         GemOrderTest.UI:Refresh()
     end
 end
