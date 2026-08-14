@@ -56,7 +56,7 @@ function GemOrder_GetOrderStatusLabel(order)
     return GemOrder_GetStatusLabel(order.status)
 end
 
-GemOrder.VERSION = "0.7.75"
+GemOrder.VERSION = "0.7.76"
 
 function GemOrder_GetVersion()
     return GemOrder.VERSION
@@ -596,9 +596,6 @@ local function TryGuildSync()
         GemOrder_ScanPersonalBankForGems()
         if GemOrder_ShouldShareStock() then
             GemOrder_ShareWorkshopStock()
-        end
-        if GemOrder_ShouldShareRecipes() then
-            GemOrder_ShareWorkshopRecipes()
         end
     end
 

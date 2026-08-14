@@ -1216,6 +1216,9 @@ function UI:RefreshStockPanel()
 end
 
 function UI:CreateRecipesPanel()
+    if GemOrder_InitRecipeEvents then
+        GemOrder_InitRecipeEvents()
+    end
     local f = self.frame
     local panel = CreateInsetPanel(f)
     panel:SetPoint("TOPLEFT", 12, -108)
@@ -1556,7 +1559,6 @@ function UI:CreateOrderDialog()
     dialog:EnableMouse(true)
     dialog:SetMovable(true)
     dialog:Hide()
-    tinsert(UISpecialFrames, "GemOrderOrderDialog")
 
     local shellBg = dialog:CreateTexture(nil, "BACKGROUND")
     shellBg:SetAllPoints()

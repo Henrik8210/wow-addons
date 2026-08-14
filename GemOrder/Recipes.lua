@@ -429,21 +429,6 @@ local function OnTradeSkillEvent()
     QueuePassiveRecipeScan()
 end
 
-local function OnPlayerLogin()
-    if C_Timer and C_Timer.After then
-        C_Timer.After(4, function()
-            if not GemOrder_ShouldShareRecipes() or not GemOrder_HasJoinedWorkshop() then
-                return
-            end
-            local player = UnitName("player")
-            local report = GemOrderDB.recipes.jcReports[player]
-            if report and report.itemIds and CountKnown(report.itemIds) > 0 then
-                GemOrder.Sync:BroadcastRecipes(report.itemIds)
-            end
-        end)
-    end
-end
-
 function GemOrder_RefreshRecipesFromMacro(delayScan)
     if not GemOrder_ShouldShareRecipes() then
         GemOrder_RefreshRecipesSyncOnly()
@@ -465,14 +450,14 @@ function GemOrder_RefreshRecipesFromMacro(delayScan)
     end
 end
 
-local recipeWatcher = CreateFrame("Frame")
-recipeWatcher:RegisterEvent("TRADE_SKILL_SHOW")
-recipeWatcher:RegisterEvent("TRADE_SKILL_UPDATE")
-recipeWatcher:RegisterEvent("PLAYER_LOGIN")
-recipeWatcher:SetScript("OnEvent", function(_, event)
-    if event == "PLAYER_LOGIN" then
-        OnPlayerLogin()
-    else
-        OnTradeSkillEvent()
+local recipeWatcher
+
+function GemOrder_InitRecipeEvents()
+    if recipeWatcher then
+        return
     end
-end)
+    recipeWatcher = CreateFrame("Frame")
+    recipeWatcher:RegisterEvent("TRADE_SKILL_SHOW")
+    recipeWatcher:RegisterEvent("TRADE_SKILL_UPDATE")
+    recipeWatcher:SetScript("OnEvent", OnTradeSkillEvent)
+end
