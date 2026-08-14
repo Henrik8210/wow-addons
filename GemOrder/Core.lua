@@ -57,7 +57,7 @@ function GemOrder_GetOrderStatusLabel(order)
     return GemOrder_GetStatusLabel(order.status)
 end
 
-GemOrder.VERSION = "0.7.77"
+GemOrder.VERSION = "0.7.78"
 
 function GemOrder_GetVersion()
     return GemOrder.VERSION
@@ -74,16 +74,8 @@ function GemOrder_EnsureUI()
         return true
     end
 
-    if LoadAddOn and not IsAddOnLoaded("GemOrder_UI") then
-        local loaded, reason = LoadAddOn("GemOrder_UI")
-        if not loaded then
-            print("|cffff0000GemOrder|r Could not load UI module: " .. tostring(reason))
-            return false
-        end
-    end
-
     if not GemOrder.UI or not GemOrder.UI.Init then
-        print("|cffff0000GemOrder|r UI module loaded but GemOrder.UI is missing.")
+        print("|cffff0000GemOrder|r UI failed to load.")
         return false
     end
 
