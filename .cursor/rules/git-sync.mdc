@@ -15,6 +15,9 @@ After completing meaningful work on GemOrder or GemOrderTest:
 1. Commit all relevant changes with a clear message (why, not just what).
 2. Push to `origin/main` unless the user asked not to push.
 3. Bump `## Version:` in the relevant `.toc` when shipping a new release build.
-4. Copy the updated addon folder(s) to the WoW AddOns path so the user can `/reload` immediately.
+4. Copy updated addon folder(s) to the WoW AddOns path so the user can `/reload` immediately:
+   - `GemOrder/` (core)
+   - `GemOrder_UI/` (load-on-demand UI module)
+   - `GemOrderTest/` when changed
 
 Do not leave addon code only on disk in the repo — deploy to WoW and keep GitHub as source of truth.

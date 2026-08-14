@@ -33,42 +33,17 @@ local NOTES_PLACEHOLDER = "Fx. this is my BiS gear..."
 local GEM_PLACEHOLDER = "Select gem..."
 local ROLE_PLACEHOLDER = "Select role..."
 
-StaticPopupDialogs = StaticPopupDialogs or {}
-StaticPopupDialogs["GEMORDER_CONFIRM_CLOSE_WORKSHOP"] = {
-    text = "Are you sure you wish to close the workshop %s?",
-    button1 = YES,
-    button2 = NO,
-    OnAccept = function(self)
-        local data = self.data
-        if not data or not data.roomId then
-            return
-        end
-        local ok, err = GemOrder_CloseWorkshop(data.roomId)
-        if not ok then
-            print("|cff00ccffGemOrder|r " .. (err or "Could not close workshop."))
-        else
-            print("|cff00ccffGemOrder|r Workshop closed.")
-        end
-        if GemOrder.UI then
-            GemOrder_RefreshUI()
-        end
-    end,
-    timeout = 0,
-    whileDead = true,
-    hideOnEscape = true,
-}
-
 local function ConfirmCloseWorkshop(room)
-    if not room or not StaticPopup_Show then
+    if not room then
         return
     end
-    local dialog = StaticPopup_Show("GEMORDER_CONFIRM_CLOSE_WORKSHOP", room.name)
-    if dialog then
-        dialog.data = {
-            roomId = room.id,
-            roomName = room.name,
-        }
+    local ok, err = GemOrder_CloseWorkshop(room.id)
+    if not ok then
+        print("|cff00ccffGemOrder|r " .. (err or "Could not close workshop."))
+    else
+        print("|cff00ccffGemOrder|r Workshop closed.")
     end
+    GemOrder_RefreshUI()
 end
 
 local GEM_COLORS = {
@@ -230,78 +205,23 @@ local function CreateMainFrameHelper()
     return frame
 end
 
-local function CloseDropdownMenus()
-    if CloseDropDownMenus then
-        CloseDropDownMenus()
+local function HideOpenDropdownLists()
+    for i = 1, (UIDROPDOWNMENU_MAXLEVELS or 2) do
+        local list = _G["DropDownList" .. i]
+        if list and list.IsShown and list:IsShown() then
+            list:Hide()
+        end
     end
 end
 
 local function SafeCloseDropdownMenus()
-    if GemOrder_IsLoggingOut and GemOrder_IsLoggingOut() then
-        return
-    end
-    CloseDropdownMenus()
-end
-
-local function IsDropdownRelatedFrame(frame)
-    while frame do
-        local name = frame.GetName and frame:GetName()
-        if name then
-            if name:find("DropDownList")
-                or name:find("DropDownMenu")
-                or name:find("DropDown")
-                or name:find("Dropdown") then
-                return true
-            end
-            if name:find("^GemOrder.*Dropdown") then
-                return true
-            end
-        end
-        frame = frame.GetParent and frame:GetParent()
-    end
-    return false
-end
-
-local function ShouldKeepDropdownOpen()
-    local focus = GetMouseFocus and GetMouseFocus()
-    if focus and IsDropdownRelatedFrame(focus) then
-        return true
-    end
-
-    for i = 1, 2 do
-        local list = _G["DropDownList" .. i]
-        if list and list.IsShown and list:IsShown() and list.IsMouseOver and list:IsMouseOver() then
-            return true
-        end
-    end
-
-    return false
-end
-
-local function CloseDropdownMenusFromAddonClick()
-    if GemOrder_IsLoggingOut and GemOrder_IsLoggingOut() then
-        return
-    end
-    if ShouldKeepDropdownOpen() then
-        return
-    end
-    SafeCloseDropdownMenus()
+    HideOpenDropdownLists()
 end
 
 local function EnableDropdownDismissLayer(frame)
     frame:EnableMouse(true)
-    frame:SetScript("OnMouseDown", function(_, button)
-        if GemOrder_IsLoggingOut and GemOrder_IsLoggingOut() then
-            return
-        end
-        if button and button ~= "LeftButton" then
-            return
-        end
-        if C_Timer and C_Timer.After then
-            C_Timer.After(0, CloseDropdownMenusFromAddonClick)
-        else
-            CloseDropdownMenusFromAddonClick()
-        end
+    frame:SetScript("OnMouseDown", function()
+        HideOpenDropdownLists()
     end)
 end
 
@@ -460,13 +380,8 @@ function UI:CreateMainFrame()
     f:SetFrameStrata("DIALOG")
     f:Hide()
 
-    tinsert(UISpecialFrames, f:GetName())
-
     f:SetScript("OnHide", function()
-        if GemOrder_IsLoggingOut and GemOrder_IsLoggingOut() then
-            return
-        end
-        HideOrderDialogSilently()
+        HideOpenDropdownLists()
     end)
 
     SetFrameTitle(f, "GemOrder")

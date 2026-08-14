@@ -2,7 +2,7 @@
 ## Title: GemOrder
 ## Notes: Guild gem ordering for TBC Anniversary Phase 3 jewelcrafters.
 ## Author: Henrik8210
-## Version: 0.7.76
+## Version: 0.7.77
 ## SavedVariables: GemOrderDB
 
 Core.lua
@@ -13,7 +13,5 @@ Stock.lua
 Recipes.lua
 Tooltips.lua
 Sync.lua
-Debug.lua
-UI.lua
 Minimap.lua
 Commands.lua

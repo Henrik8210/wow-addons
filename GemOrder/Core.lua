@@ -7,6 +7,7 @@ if not strtrim then
 end
 
 GemOrder = GemOrder or {}
+GemOrder.UI = GemOrder.UI or {}
 GemOrderDB = GemOrderDB or {
     orders = {},
     rooms = {},
@@ -56,7 +57,7 @@ function GemOrder_GetOrderStatusLabel(order)
     return GemOrder_GetStatusLabel(order.status)
 end
 
-GemOrder.VERSION = "0.7.76"
+GemOrder.VERSION = "0.7.77"
 
 function GemOrder_GetVersion()
     return GemOrder.VERSION
@@ -72,6 +73,20 @@ function GemOrder_EnsureUI()
     if GemOrder.UI and GemOrder.UI.frame then
         return true
     end
+
+    if LoadAddOn and not IsAddOnLoaded("GemOrder_UI") then
+        local loaded, reason = LoadAddOn("GemOrder_UI")
+        if not loaded then
+            print("|cffff0000GemOrder|r Could not load UI module: " .. tostring(reason))
+            return false
+        end
+    end
+
+    if not GemOrder.UI or not GemOrder.UI.Init then
+        print("|cffff0000GemOrder|r UI module loaded but GemOrder.UI is missing.")
+        return false
+    end
+
     local ok, err = pcall(function()
         GemOrder_HookDropdownMenuTooltips()
         GemOrder.UI:Init()
