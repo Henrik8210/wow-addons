@@ -237,6 +237,8 @@ tinsert(UISpecialFrames, frame:GetName())
 
 **Instead:** Prefer closing your frame with your own close button. For **ESC-to-close**, register in `UISpecialFrames` when the frame is first created (lazy UI init), not at addon load — and **never** remove entries on `LOGOUT`. See `GemOrder_RegisterEscapeFrame` in `Tooltips.lua`.
 
+**Long dropdown lists:** When a menu extends upward, overlays, title bars, or parent frames can sit above the top rows and steal mouse hover (tooltips fail for the first dozen items). Fix: raise `DropDownList` to `FULLSCREEN_DIALOG` while open and temporarily disable mouse on blockers — see `GemOrder_ElevateDropdownList`.
+
 ---
 
 #### 4. `StaticPopupDialogs` at file load
