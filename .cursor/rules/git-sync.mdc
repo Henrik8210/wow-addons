@@ -12,7 +12,7 @@ Remote: https://github.com/Henrik8210/wow-addons.git (branch `main`).
 WoW install path (always copy here after GemOrder/GemOrderTest changes):
 `C:\Program Files (x86)\World of Warcraft\_anniversary_\Interface\AddOns\`
 
-After completing meaningful work on GemOrder or GemOrderTest:
+After **every** change to GemOrder or GemOrderTest (not only “big” releases):
 
 1. Commit all relevant changes with a clear message (why, not just what).
 2. Push to `origin/main` unless the user asked not to push.

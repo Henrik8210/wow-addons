@@ -26,9 +26,10 @@ When Test is **ahead of production**, use a suffix on Test only, e.g. `0.7.80-r1
 ## GitHub workflow
 
 - **Remote:** https://github.com/Henrik8210/wow-addons.git — branch `main`
-- After meaningful work on GemOrder or GemOrderTest:
+- **Always commit and push after every change** to GemOrder or GemOrderTest — no exceptions for “small” fixes. If it was worth deploying to WoW, it belongs in git.
+- After each change:
   1. Commit with a short message focused on **why** (not just what changed).
-  2. Push to `origin/main`.
+  2. Push to `origin/main` unless the user explicitly asked not to push.
 - Do not leave fixes only on disk or only deployed to WoW — GitHub is the source of truth.
 
 Example commit message:
@@ -402,7 +403,7 @@ GemOrderTest uses separate saved variables and addon messages, so it does not co
 - [ ] `.\scripts\sync-gemordertest.ps1` run
 - [ ] Both folders copied to WoW AddOns path
 - [ ] Logout smoke-test (main GemOrder) — see [case study](#logout-taint-case-study-aug-2026)
-- [ ] Committed and pushed to `origin/main`
+- [ ] Committed and pushed to `origin/main` (required for every change, not only releases)
 
 ---
 

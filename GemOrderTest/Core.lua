@@ -572,6 +572,9 @@ local function OnAddonLoaded(_, addon)
     local ok, err = pcall(function()
         GemOrderTest.Sync:Init()
         GemOrderTest_TooltipsInit()
+        if GemOrderTest_InitStockEvents then
+            GemOrderTest_InitStockEvents()
+        end
         GemOrderTest.Minimap:Init()
     end)
     if not ok then

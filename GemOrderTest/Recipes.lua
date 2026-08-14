@@ -386,6 +386,39 @@ function GemOrderTest_WorkshopHasRecipeForGem(gemName)
     return false
 end
 
+local RECIPE_KNOWN_ICON = "|TInterface\\RaidFrame\\ReadyCheck-Ready:14:14|t"
+local RECIPE_MISSING_ICON = "|TInterface\\RaidFrame\\ReadyCheck-NotReady:14:14|t"
+
+function GemOrderTest_GetRecipeIndicatorText(gemName)
+    if not gemName or gemName == "None" then
+        return ""
+    end
+
+    local gem = GemOrderTest_GemByName and GemOrderTest_GemByName[gemName]
+    if not gem or gem.raw or not gem.itemId then
+        return ""
+    end
+
+    if GemOrderTest_WorkshopHasRecipeForGem(gemName) then
+        return RECIPE_KNOWN_ICON .. " "
+    end
+
+    return RECIPE_MISSING_ICON .. " "
+end
+
+function GemOrderTest_FormatGemDropdownLabel(gemName)
+    if not gemName or gemName == "None" then
+        return nil
+    end
+
+    local indicator = GemOrderTest_GetRecipeIndicatorText(gemName)
+    if indicator == "" then
+        return gemName
+    end
+
+    return indicator .. gemName
+end
+
 local function QueuePassiveRecipeScan()
     if not GemOrderTest_ShouldShareRecipes() or not GemOrderTest_HasJoinedWorkshop() then
         return

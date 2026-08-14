@@ -124,10 +124,6 @@ function GemOrder_InsertChatItemLink(itemIdOrLink)
         return false
     end
 
-    if HandleModifiedItemClick and HandleModifiedItemClick(link) then
-        return true
-    end
-
     if ChatEdit_InsertLink and ChatEdit_InsertLink(link) then
         return true
     end
@@ -159,16 +155,64 @@ local function IsShiftChatLinkClick(button)
     if IsModifiedClick and IsModifiedClick("CHATLINK") then
         return true
     end
-    return IsShiftKeyDown()
+    if IsShiftKeyDown then
+        return IsShiftKeyDown()
+    end
+    return false
 end
 
-local function AttachShiftClickLink(frame, getLinkFn)
-    frame:SetScript("OnMouseUp", function(self, button)
-        if not IsShiftChatLinkClick(button) then
-            return
+local function IsDressUpClick(button)
+    if button ~= "LeftButton" and button ~= "LeftButtonUp" then
+        return false
+    end
+    if IsModifiedClick and IsModifiedClick("DRESSUP") then
+        return true
+    end
+    if IsControlKeyDown then
+        return IsControlKeyDown()
+    end
+    return false
+end
+
+function GemOrder_HandleItemClick(itemIdOrLink, button)
+    if button ~= "LeftButton" and button ~= "LeftButtonUp" then
+        return false
+    end
+
+    local dressUp = IsDressUpClick(button)
+    local chatLink = IsShiftChatLinkClick(button)
+    if not dressUp and not chatLink then
+        return false
+    end
+
+    local link = ResolveItemLink(itemIdOrLink)
+    if not link then
+        return false
+    end
+
+    if HandleModifiedItemClick and HandleModifiedItemClick(link) then
+        return true
+    end
+
+    if dressUp then
+        if DressUpItemLink then
+            DressUpItemLink(link)
+            return true
         end
-        GemOrder_InsertChatItemLink(getLinkFn(self))
-    end)
+        if ShowUIPanel and DressUpFrame then
+            ShowUIPanel(DressUpFrame)
+            if DressUpModel and DressUpModel.TryOn then
+                DressUpModel:TryOn(link)
+                return true
+            end
+        end
+    end
+
+    if chatLink then
+        return GemOrder_InsertChatItemLink(itemIdOrLink)
+    end
+
+    return false
 end
 
 function GemOrder_RegisterEscapeFrame(frame)
@@ -257,7 +301,9 @@ function GemOrder_AttachItemTooltip(frame, getLinkFn)
         end
     end)
     frame:SetScript("OnLeave", GemOrder_HideTooltip)
-    AttachShiftClickLink(frame, getLinkFn)
+    frame:SetScript("OnMouseUp", function(self, button)
+        GemOrder_HandleItemClick(getLinkFn(self), button)
+    end)
 end
 
 function GemOrder_ClearDropdownItemTooltips(level)
@@ -306,15 +352,12 @@ function GemOrder_AttachDropdownItemButton(itemId, buttonIndex)
         end
     end)
     button:SetScript("OnMouseUp", function(self, mouseButton)
-        if not IsShiftChatLinkClick(mouseButton) then
-            return
-        end
         local linkedItemId = self.gemOrderItemId
         if linkedItemId
             and type(self.value) == "number"
             and self.value > 0
             and self.value == linkedItemId then
-            GemOrder_InsertChatItemLink(linkedItemId)
+            GemOrder_HandleItemClick(linkedItemId, mouseButton)
         end
     end)
 end

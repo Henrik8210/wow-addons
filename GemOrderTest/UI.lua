@@ -1160,7 +1160,12 @@ function UI:RefreshStockPanel()
     local player = UnitName("player")
     local canShare = GemOrderTest_ShouldShareStock()
     if canShare then
-        AddSection("Your Bags + Bank", GemOrderTest_GetStockCounts("personal"), "personal")
+        local personalTitle = "Your Bags + Bank"
+        local bankNote = GemOrderTest_GetBankStockNote and GemOrderTest_GetBankStockNote()
+        if bankNote then
+            personalTitle = personalTitle .. " |cff888888(" .. bankNote .. ")|r"
+        end
+        AddSection(personalTitle, GemOrderTest_GetStockCounts("personal"), "personal")
     end
 
     local sharedJcs = {}
@@ -1587,11 +1592,12 @@ function UI:CreateGemDropdown(name, parent, point, x, y, onSelect, getSelected, 
                 info.notCheckable = true
             elseif entry.kind == "gem" then
                 local gem = entry.gem
-                info.text = gem.name
+                local label = GemOrderTest_FormatGemDropdownLabel(gem.name) or gem.name
+                info.text = label
                 info.value = gem.itemId
                 MarkDropdownSelection(info, getSelected() == gem.name)
                 info.func = function()
-                    SetDropdownDisplayText(dropdown, gem.name)
+                    SetDropdownDisplayText(dropdown, label)
                     onSelect(gem.name)
                 end
             end
@@ -1611,6 +1617,21 @@ function UI:CreateGemDropdown(name, parent, point, x, y, onSelect, getSelected, 
     end)
     ConfigureOrderDropdown(dropdown, width)
     return dropdown
+end
+
+function UI:RefreshGemDropdownLabels()
+    local f = self.frame
+    if not f or not f.gemDropdowns then
+        return
+    end
+
+    for i = 1, 3 do
+        local dropdown = f.gemDropdowns[i]
+        local gemName = f.selectedGems and f.selectedGems[i]
+        if dropdown and gemName and gemName ~= "None" then
+            SetDropdownDisplayText(dropdown, GemOrderTest_FormatGemDropdownLabel(gemName) or gemName)
+        end
+    end
 end
 
 function UI:RelayoutOrderForm()
@@ -1800,6 +1821,7 @@ function UI:RefreshOrderFormWarnings()
     for i = 1, 3 do
         self:UpdateGemRecipeWarning(i)
     end
+    self:RefreshGemDropdownLabels()
     self:RelayoutOrderForm()
 end
 

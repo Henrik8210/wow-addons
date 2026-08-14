@@ -95,11 +95,38 @@ function GemOrder_ScanBagsForGems()
     return counts
 end
 
+local function IsBankAccessible()
+    if BankFrame and BankFrame.IsShown and BankFrame:IsShown() then
+        return true
+    end
+    return GetContainerSlots(5) > 0
+end
+
+function GemOrder_IsBankAccessible()
+    return IsBankAccessible()
+end
+
+function GemOrder_GetBankStockNote()
+    EnsureDB()
+    if IsBankAccessible() then
+        return nil
+    end
+    if GemOrderDB.stock.bankUpdated then
+        return "bank included from last visit"
+    end
+    return "open your bank once to include bank gems"
+end
+
 function GemOrder_ScanPersonalBankForGems()
+    EnsureDB()
+    if not IsBankAccessible() then
+        GemOrderDB.stock.bank = GemOrderDB.stock.bank or EmptyCounts()
+        return GemOrderDB.stock.bank
+    end
+
     local counts = EmptyCounts()
     ScanBagRange(5, 11, counts)
 
-    EnsureDB()
     GemOrderDB.stock.bank = counts
     GemOrderDB.stock.bankUpdated = time()
     return counts
@@ -213,4 +240,50 @@ function GemOrder_GetStockListing(counts)
         return a.name < b.name
     end)
     return lines
+end
+
+local stockEventFrame
+local bankScanQueued = false
+
+local function QueueBankStockRefresh()
+    if bankScanQueued then
+        return
+    end
+    bankScanQueued = true
+
+    local function run()
+        bankScanQueued = false
+        if not IsBankAccessible() then
+            return
+        end
+        GemOrder_ScanPersonalBankForGems()
+        GemOrder_ScanBagsForGems()
+        if GemOrder_ShouldShareStock() then
+            GemOrder_ShareWorkshopStock()
+        end
+        if GemOrder.UI and GemOrder.UI.frame then
+            GemOrder.UI:Refresh()
+        end
+    end
+
+    if C_Timer and C_Timer.After then
+        C_Timer.After(0.1, run)
+    else
+        run()
+    end
+end
+
+function GemOrder_InitStockEvents()
+    if stockEventFrame then
+        return
+    end
+
+    stockEventFrame = CreateFrame("Frame")
+    stockEventFrame:RegisterEvent("BANKFRAME_OPENED")
+    stockEventFrame:RegisterEvent("PLAYERBANKSLOTS_CHANGED")
+    stockEventFrame:SetScript("OnEvent", function(_, event)
+        if event == "BANKFRAME_OPENED" or event == "PLAYERBANKSLOTS_CHANGED" then
+            QueueBankStockRefresh()
+        end
+    end)
 end
