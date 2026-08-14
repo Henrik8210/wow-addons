@@ -1345,6 +1345,8 @@ function UI:CreateGearDropdown(name, parent, point, x, y, frameRef, width)
     UIDropDownMenu_SetWidth(dropdown, width or 300)
     UIDropDownMenu_Initialize(dropdown, function()
         self:BuildDropdownCaches()
+        GemOrder_BeginDropdownItemTooltips()
+        local buttonIndex = 0
 
         for _, entry in ipairs(self.gearMenuEntries) do
             local info = UIDropDownMenu_CreateInfo()
@@ -1371,7 +1373,13 @@ function UI:CreateGearDropdown(name, parent, point, x, y, frameRef, width)
                 end
             end
             UIDropDownMenu_AddButton(info)
+            buttonIndex = buttonIndex + 1
+            if entry.kind == "gear" then
+                GemOrder_QueueDropdownItemTooltip(buttonIndex, entry.gear.itemId)
+            end
         end
+
+        GemOrder_ApplyDropdownItemTooltips()
     end)
 
     SetDropdownDisplayText(dropdown, "Select gear...")
@@ -1389,6 +1397,8 @@ function UI:CreateGemDropdown(name, parent, point, x, y, onSelect, getSelected, 
     UIDropDownMenu_SetWidth(dropdown, width or 240)
     UIDropDownMenu_Initialize(dropdown, function()
         self:BuildDropdownCaches()
+        GemOrder_BeginDropdownItemTooltips()
+        local buttonIndex = 0
 
         for _, entry in ipairs(self.gemMenuEntries) do
             local info = UIDropDownMenu_CreateInfo()
@@ -1415,7 +1425,13 @@ function UI:CreateGemDropdown(name, parent, point, x, y, onSelect, getSelected, 
                 end
             end
             UIDropDownMenu_AddButton(info)
+            buttonIndex = buttonIndex + 1
+            if entry.kind == "gem" then
+                GemOrder_QueueDropdownItemTooltip(buttonIndex, entry.gem.itemId)
+            end
         end
+
+        GemOrder_ApplyDropdownItemTooltips()
     end)
 
     SetDropdownDisplayText(dropdown, GEM_PLACEHOLDER)

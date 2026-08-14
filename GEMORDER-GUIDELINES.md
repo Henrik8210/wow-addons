@@ -375,7 +375,7 @@ Condensed list for day-to-day work:
 
 - **Lazy UI:** `GemOrder_EnsureUI()` — build UI only on first `/gemorder` or minimap click
 - **Lazy StaticPopup:** register dialog only when first needed (e.g. close workshop)
-- **Dropdown row tooltips:** `hooksecurefunc("UIDropDownMenuButton_OnEnter", …)` scoped to GemOrder dropdown names — not `SetScript` on list buttons
+- **Dropdown row tooltips:** `hooksecurefunc` on `UIDropDownMenuButton_OnEnter`, scoped to your dropdown names. Store `itemId` on each list button as `button.gemOrderItemId` when the menu builds — do **not** rely on `button.value` (Blizzard recycles buttons). Do **not** `SetScript` on list buttons.
 - **Recipe events:** start trade-skill watcher when Recipes panel is built, not at login
 
 When re-adding features, follow the [mandatory logout smoke test](#mandatory-logout-smoke-test) above.

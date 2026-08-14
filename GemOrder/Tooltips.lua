@@ -176,6 +176,56 @@ local function IsGemOrderItemDropdown(dropdown)
         or name:match("^GemOrderGemDropdown") ~= nil
 end
 
+local function ClearDropdownListItemIds(level)
+    level = level or UIDROPDOWNMENU_MENU_LEVEL or 1
+    local maxButtons = UIDROPDOWNMENU_MAXBUTTONS or 32
+    for i = 1, maxButtons do
+        local button = _G["DropDownList" .. level .. "Button" .. i]
+        if button then
+            button.gemOrderItemId = nil
+        end
+    end
+end
+
+function GemOrder_BeginDropdownItemTooltips()
+    GemOrder._dropdownItemTooltips = {}
+    ClearDropdownListItemIds(UIDROPDOWNMENU_MENU_LEVEL or 1)
+end
+
+function GemOrder_QueueDropdownItemTooltip(buttonIndex, itemId)
+    if not itemId or itemId <= 0 or not buttonIndex then
+        return
+    end
+    GemOrder._dropdownItemTooltips = GemOrder._dropdownItemTooltips or {}
+    GemOrder._dropdownItemTooltips[buttonIndex] = itemId
+end
+
+function GemOrder_ApplyDropdownItemTooltips(level)
+    level = level or UIDROPDOWNMENU_MENU_LEVEL or 1
+    local map = GemOrder._dropdownItemTooltips
+    if not map or not IsGemOrderItemDropdown(UIDROPDOWNMENU_OPEN_MENU) then
+        return
+    end
+
+    local function apply()
+        if not IsGemOrderItemDropdown(UIDROPDOWNMENU_OPEN_MENU) then
+            return
+        end
+        for index, itemId in pairs(map) do
+            local button = _G["DropDownList" .. level .. "Button" .. index]
+            if button then
+                button.gemOrderItemId = itemId
+            end
+        end
+    end
+
+    if C_Timer and C_Timer.After then
+        C_Timer.After(0, apply)
+    else
+        apply()
+    end
+end
+
 function GemOrder_AttachDropdownTooltips(dropdown, getItemIdFn)
     local button = _G[dropdown:GetName() .. "Button"]
     if button then
@@ -198,16 +248,24 @@ function GemOrder_HookDropdownMenuTooltips()
         if not IsGemOrderItemDropdown(UIDROPDOWNMENU_OPEN_MENU) then
             return
         end
-        local itemId = self.value
+        local itemId = self.gemOrderItemId
         if type(itemId) == "number" and itemId > 0 then
             GemOrder_ShowItemTooltip(self, itemId, "ANCHOR_RIGHT")
         end
     end)
 
-    hooksecurefunc("UIDropDownMenuButton_OnLeave", function()
-        if not IsGemOrderItemDropdown(UIDROPDOWNMENU_OPEN_MENU) then
+    hooksecurefunc("UIDropDownMenuButton_OnLeave", function(self)
+        if not self or not IsGemOrderItemDropdown(UIDROPDOWNMENU_OPEN_MENU) then
             return
         end
-        GemOrder_HideTooltip()
+        if self.gemOrderItemId then
+            GemOrder_HideTooltip()
+        end
     end)
+
+    if UIDropDownMenu_CreateButtons then
+        hooksecurefunc("UIDropDownMenu_CreateButtons", function(level)
+            GemOrder_ApplyDropdownItemTooltips(level or UIDROPDOWNMENU_MENU_LEVEL or 1)
+        end)
+    end
 end
