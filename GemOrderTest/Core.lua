@@ -56,7 +56,7 @@ function GemOrderTest_GetOrderStatusLabel(order)
     return GemOrderTest_GetStatusLabel(order.status)
 end
 
-GemOrderTest.VERSION = "0.7.0"
+GemOrderTest.VERSION = "0.6.0"
 
 function GemOrderTest_GetVersion()
     return GemOrderTest.VERSION
@@ -249,10 +249,7 @@ function GemOrderTest_CreateOrder(gear, gems, notes, role)
         return nil, "Select at least one gem."
     end
 
-    role = role or ""
-    if not GemOrderTest_IsValidRole(role) then
-        return nil, "Select a role."
-    end
+    role = role or "DPS"
 
     local _, classToken = UnitClass("player")
     local order = {
@@ -473,7 +470,7 @@ local function CollectSortedOrders(mode)
                     -- skip
                 elseif mode == "completed" and order.status ~= "completed" then
                     -- skip
-                else
+                elseif mode == "all" or mode == "active" or mode == "completed" then
                     table.insert(list, order)
                 end
             end
@@ -507,7 +504,11 @@ local function CollectSortedOrders(mode)
 end
 
 function GemOrderTest_GetSortedOrders()
-    return CollectSortedOrders("active")
+    return CollectSortedOrders("all")
+end
+
+function GemOrderTest_GetAllOrders()
+    return CollectSortedOrders("all")
 end
 
 function GemOrderTest_GetActiveOrders()
@@ -559,7 +560,7 @@ local function OnAddonLoaded(_, addon)
     end
 
     if GemOrderTest.Minimap.button or (GemOrderTest.UI and GemOrderTest.UI.frame) then
-        print("|cff00ccffGemOrderTest|r v0.7.0 bisect — no Recipes. Type |cff00ccff/gotest|r")
+        print("|cff00ccffGemOrderTest|r v0.6.0 bisect — gear icons era. Type |cff00ccff/gotest|r")
     else
         print("|cffff0000GemOrderTest failed to load.|r Check chat for errors.")
     end

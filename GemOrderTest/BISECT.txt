@@ -3,9 +3,13 @@ GemOrderTest bisect log (logout debugging)
 Disable main GemOrder in the addon list. Enable only GemOrderTest.
 
 v0.7.70 - FAIL (login recipe auto-scan with CastSpell/CloseTradeSkill)
-v0.7.0  - TESTING NOW (no Recipes.lua logic, no Debug, no logout prep hooks)
+v0.7.0  - TEST (no Recipes; result pending)
+v0.6.0  - TESTING NOW (workshops + stock + gear icons; WorldFrame dropdown hook)
 
-If v0.7.0 works: bug entered between 0.7.0 and 0.7.41 (Recipes tab) or 0.7.42+ (auto login scan).
-If v0.7.0 fails: next strip Stock auto-sync, then Sync, then UI dropdown dismiss.
+v0.6.0 had: Workshop | Orders | Gem Stock tabs, inline-era UI, gear icons on orders,
+CloseDropDownMenus + WorldFrame hook, no Recipes/role/completed tab/co-leaders.
+
+If v0.6.0 works: bug entered between 0.6.0 and 0.7.0 (or 0.7.41 Recipes).
+If v0.6.0 fails: next strip login stock scan, then guild sync, then dropdown dismiss.
 
 Commands: /gotest
