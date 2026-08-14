@@ -1,0 +1,11 @@
+GemOrderTest bisect log (logout debugging)
+==========================================
+Disable main GemOrder in the addon list. Enable only GemOrderTest.
+
+v0.7.70 - FAIL (login recipe auto-scan with CastSpell/CloseTradeSkill)
+v0.7.0  - TESTING NOW (no Recipes.lua logic, no Debug, no logout prep hooks)
+
+If v0.7.0 works: bug entered between 0.7.0 and 0.7.41 (Recipes tab) or 0.7.42+ (auto login scan).
+If v0.7.0 fails: next strip Stock auto-sync, then Sync, then UI dropdown dismiss.
+
+Commands: /gotest

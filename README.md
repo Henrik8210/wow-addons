@@ -1,20 +1,33 @@
 # wow-addons
 
-A workspace for World of Warcraft addon development.
+World of Warcraft addon development workspace.
 
-## Quick start
+## Addons
 
-1. Copy or symlink addon folders into:
-   `%ProgramFiles(x86)%\World of Warcraft\_retail_\Interface\AddOns\`
+### GemOrder
 
-2. Reload in game with `/reload`
+Guild gem ordering for **TBC Anniversary Phase 3** (Black Temple / Mount Hyjal).
 
-3. The starter addon `HelloWoW` prints a message on login. Try `/hellowow`.
+Jewelcrafters receive gem orders from guild members who got new socketed gear from raids. Orders sync across the guild via addon messages.
 
-## Create a new addon
+**Commands:**
+| Command | Description |
+|---------|-------------|
+| `/gemorder` or `/go` | Open the order window |
+| `/go jc` | Toggle JC mode (manage order queue) |
+| `/go sync` | Request a full sync from guild members |
 
-Copy `HelloWoW/`, rename the folder and files to match, then update the `.toc` metadata.
+**Install:** Copy or symlink `GemOrder/` into your TBC Anniversary AddOns folder:
+```
+C:\Program Files (x86)\World of Warcraft\_anniversary_\Interface\AddOns\
+```
 
-## Interface version
+**Open the addon:**
+- Click the **gem icon** on the minimap (left-click)
+- Or type `/gemorder`, `/gorder`, or `/gor`
+- Right-click the minimap icon to toggle JC mode
+- Shift + drag the icon to reposition it
 
-Update `## Interface:` in each `.toc` file when WoW patches. Check Blizzard default UI addons for the current number.
+## Development
+
+Update `## Interface:` in each `.toc` when WoW patches. Reload with `/reload`.

@@ -1,0 +1,18 @@
+## Interface: 20505, 20506
+## Title: GemOrderTest
+## Notes: Bisect build v0.7.0 — no Recipes tab, no login auto-scan. Disable main GemOrder.
+## Author: Henrik8210
+## Version: 0.7.0
+## SavedVariables: GemOrderTestDB
+
+Core.lua
+Gems.lua
+Gear.lua
+Rooms.lua
+Stock.lua
+Recipes.lua
+Tooltips.lua
+Sync.lua
+UI.lua
+Minimap.lua
+Commands.lua
