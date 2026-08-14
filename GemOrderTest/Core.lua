@@ -1,4 +1,4 @@
-local ADDON_NAME = ...
+ï»¿local ADDON_NAME = ...
 
 if not strtrim then
     function strtrim(s)
@@ -57,7 +57,7 @@ function GemOrderTest_GetOrderStatusLabel(order)
     return GemOrderTest_GetStatusLabel(order.status)
 end
 
-GemOrderTest.VERSION = "0.7.84"
+GemOrderTest.VERSION = "0.7.93"
 
 function GemOrderTest_GetVersion()
     return GemOrderTest.VERSION
@@ -579,7 +579,7 @@ local function OnAddonLoaded(_, addon)
     end
 
     if GemOrderTest.Minimap.button then
-        print("|cff00ccffGemOrderTest|r v" .. GemOrderTest_GetVersion() .. " test mirror — disable main GemOrder. Type |cff00ccff/gotest|r.")
+        print("|cff00ccffGemOrderTest|r loaded. Click the gem icon on your minimap, or type |cff00ccff/gemorder|r.")
     else
         print("|cffff0000GemOrderTest failed to load.|r Check chat for errors.")
     end

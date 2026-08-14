@@ -27,7 +27,7 @@ function Convert-GemOrderToTest([string]$text) {
 }
 
 $luaFiles = @(
-    "Core.lua", "Gems.lua", "Gear.lua", "Rooms.lua", "Stock.lua",
+    "Core.lua", "Gems.lua", "GearPvp.lua", "Gear.lua", "Rooms.lua", "Stock.lua",
     "Recipes.lua", "Tooltips.lua", "Sync.lua", "UI.lua", "Minimap.lua"
 )
 
@@ -74,6 +74,7 @@ $toc = @"
 
 Core.lua
 Gems.lua
+GearPvp.lua
 Gear.lua
 Rooms.lua
 Stock.lua

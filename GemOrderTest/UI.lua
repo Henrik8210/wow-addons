@@ -23,6 +23,7 @@ local GEM_RECIPE_WARNING = "|cffffff00Warning: Your guild has not yet obtained\n
 local ORDER_DIALOG_FOOTER_HEIGHT = 56
 local ORDER_DIALOG_DROPDOWN_WIDTH = 250
 local ORDER_DIALOG_FIELD_X = 90
+local ORDER_DIALOG_LABEL_V_OFFSET = 6
 local ORDER_DIALOG_DROPDOWN_TEXT_INSET = 18
 local QUEUE_FRAME_MARGIN = 12
 local QUEUE_INSET_PADDING = 12
@@ -31,6 +32,8 @@ local QUEUE_SCROLLBAR_GUTTER = 12
 local QUEUE_HEADER_BAND = 38
 local NOTES_PLACEHOLDER = "Fx. this is my BiS gear..."
 local GEM_PLACEHOLDER = "Select gem..."
+local GEAR_TYPE_PLACEHOLDER = "Select type..."
+local GEAR_CLASS_PLACEHOLDER = "Select class..."
 local ROLE_PLACEHOLDER = "Select role..."
 
 local function RegisterCloseWorkshopPopup()
@@ -356,15 +359,6 @@ function UI:BuildDropdownCaches()
     end
     self._dropdownCachesReady = true
 
-    self.gearMenuEntries = {}
-    table.insert(self.gearMenuEntries, { kind = "clear" })
-    for _, raid in ipairs(GemOrderTest_GearRaids) do
-        table.insert(self.gearMenuEntries, { kind = "header", text = raid })
-        for _, gear in ipairs(GemOrderTest_GetGearByRaid(raid)) do
-            table.insert(self.gearMenuEntries, { kind = "gear", gear = gear })
-        end
-    end
-
     self.gemMenuEntries = {}
     table.insert(self.gemMenuEntries, { kind = "none" })
     local currentColor = nil
@@ -425,7 +419,7 @@ function UI:CreateMainFrame()
         f:SetPortraitTexture("Interface\\Icons\\Inv_Jewelcrafting_CrimsonSpinel_02")
     end
 
-    f.subtitle = CreateLabel(f, "Guild gem orders for Black Temple / Hyjal gear", "GameFontHighlightSmall")
+    f.subtitle = CreateLabel(f, "Guild gem orders for PVE and PVP socketed gear", "GameFontHighlightSmall")
     f.subtitle:SetPoint("TOP", 0, -28)
 
     f.roomLabel = CreateLabel(f, "", "GameFontHighlightSmall")
@@ -438,8 +432,13 @@ function UI:CreateMainFrame()
     f.jcLabel:SetWidth(FRAME_WIDTH - 160)
     f.jcLabel:SetJustifyH("LEFT")
 
-    f.creditsLabel = CreateLabel(f, "Developed by Nobunda - tested by Just", "GameFontDisableSmall")
-    f.creditsLabel:SetPoint("BOTTOMLEFT", 16, 10)
+    f.creditsDev = CreateLabel(f, "Developed by " .. GemOrderTest_ColorizePlayer("Nobunda", "SHAMAN"), "GameFontDisableSmall")
+    f.creditsDev:SetPoint("BOTTOM", 0, 22)
+    f.creditsDev:SetJustifyH("CENTER")
+
+    f.creditsTest = CreateLabel(f, "Tested by " .. GemOrderTest_ColorizePlayer("Justtwo", "WARLOCK"), "GameFontDisableSmall")
+    f.creditsTest:SetPoint("BOTTOM", 0, 8)
+    f.creditsTest:SetJustifyH("CENTER")
 
     f.versionLabel = CreateLabel(f, "v" .. GetAddonVersion(), "GameFontDisableSmall")
     f.versionLabel:SetPoint("BOTTOMRIGHT", -16, 10)
@@ -656,6 +655,7 @@ function UI:CreateWorkshopPanel()
     panel.joinDropdown:SetPoint("TOPLEFT", 130, -116)
     UIDropDownMenu_SetWidth(panel.joinDropdown, 260)
     UIDropDownMenu_Initialize(panel.joinDropdown, function()
+        GemOrderTest_ClearDropdownItemTooltips()
         local info = UIDropDownMenu_CreateInfo()
         info.text = "Select a workshop..."
         info.notCheckable = true
@@ -728,7 +728,7 @@ function UI:CreateWorkshopPanel()
     panel.help:SetWidth(FRAME_WIDTH - 48)
     panel.help:SetJustifyH("LEFT")
 
-    panel.membersHelp = CreateLabel(panel, "Manage members and Jewelcrafters below.", "GameFontDisableSmall")
+    panel.membersHelp = CreateLabel(panel, "Co-leaders can promote/demote jewelcrafters for all members except the leader. Only the leader manages co-leaders.", "GameFontDisableSmall")
     panel.membersHelp:SetWidth(FRAME_WIDTH - 48)
     panel.membersHelp:SetJustifyH("LEFT")
     panel.membersHelp:Hide()
@@ -806,8 +806,9 @@ function UI:RefreshWorkshopMembers()
     panel.memberScroll:SetPoint("TOPLEFT", panel.membersLabel, "BOTTOMLEFT", -4, -4)
     panel.memberScroll:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -28, 36)
 
-    local isManager = GemOrderTest_CanManageWorkshop(room, UnitName("player"))
-    local isOwner = GemOrderTest_IsWorkshopOwner(room, UnitName("player"))
+    local player = UnitName("player")
+    local isManager = GemOrderTest_CanManageWorkshop(room, player)
+    local isOwner = GemOrderTest_IsWorkshopOwner(room, player)
     local members = GemOrderTest_GetSortedRoomMembers(room)
     local y = 0
     for _, name in ipairs(members) do
@@ -817,6 +818,8 @@ function UI:RefreshWorkshopMembers()
 
         local label = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
         label:SetPoint("LEFT", 8, 0)
+        label:SetWidth(FRAME_WIDTH - 320)
+        label:SetJustifyH("LEFT")
         local tags = {}
         if name == room.leader then
             table.insert(tags, "|cff00ff00Leader|r")
@@ -830,9 +833,14 @@ function UI:RefreshWorkshopMembers()
         local tagText = #tags > 0 and ("  " .. table.concat(tags, " ")) or ""
         label:SetText(GemOrderTest_ColorizePlayer(name) .. tagText)
 
+        local isSelf = name == player
+        local isLeaderRow = name == room.leader
         local isTargetCoLeader = room.coLeaders and room.coLeaders[name]
         local isJewelcrafter = room.collaborators and room.collaborators[name]
-        if name ~= room.leader and isManager and not (isTargetCoLeader and not isOwner) then
+        local canManageJC = isManager and ((isLeaderRow and isSelf) or not isLeaderRow)
+        local canManageCoLeader = isOwner and not isLeaderRow
+
+        if canManageJC or canManageCoLeader then
             local right = -8
             local function placeBtn(text, width, onClick)
                 local btn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
@@ -843,40 +851,42 @@ function UI:RefreshWorkshopMembers()
                 right = right - width - 4
             end
 
-            if isOwner and isTargetCoLeader then
-                placeBtn("Demote co-leader", 110, function()
-                    local ok, err = GemOrderTest_RemoveCoLeader(room.id, name)
-                    if not ok then
-                        print("|cff00ccffGemOrderTest|r " .. (err or "Action failed."))
-                    else
-                        self:Refresh()
-                    end
-                end)
-            end
-
-            if isJewelcrafter then
-                placeBtn("Demote JC", 84, function()
-                    local ok, err = GemOrderTest_DemoteCollaborator(room.id, name)
-                    if not ok then
-                        print("|cff00ccffGemOrderTest|r " .. (err or "Action failed."))
-                    else
-                        self:Refresh()
-                    end
-                end)
-            elseif not isTargetCoLeader then
-                placeBtn("Make JC", 84, function()
-                    local ok, err = GemOrderTest_PromoteMember(room.id, name)
-                    if not ok then
-                        print("|cff00ccffGemOrderTest|r " .. (err or "Action failed."))
-                    else
-                        self:Refresh()
-                    end
-                end)
-            end
-
-            if isOwner and not isTargetCoLeader then
-                placeBtn("Make co-leader", 110, function()
+            if canManageCoLeader and not isTargetCoLeader then
+                placeBtn("Make co-leader", 124, function()
                     local ok, err = GemOrderTest_AddCoLeader(room.id, name)
+                    if not ok then
+                        print("|cff00ccffGemOrderTest|r " .. (err or "Action failed."))
+                    else
+                        self:Refresh()
+                    end
+                end)
+            end
+
+            if canManageJC then
+                if isJewelcrafter then
+                    placeBtn("Demote JC", 88, function()
+                        local ok, err = GemOrderTest_DemoteCollaborator(room.id, name)
+                        if not ok then
+                            print("|cff00ccffGemOrderTest|r " .. (err or "Action failed."))
+                        else
+                            self:Refresh()
+                        end
+                    end)
+                else
+                    placeBtn("Make JC", 88, function()
+                        local ok, err = GemOrderTest_PromoteMember(room.id, name)
+                        if not ok then
+                            print("|cff00ccffGemOrderTest|r " .. (err or "Action failed."))
+                        else
+                            self:Refresh()
+                        end
+                    end)
+                end
+            end
+
+            if canManageCoLeader and isTargetCoLeader then
+                placeBtn("Demote co-leader", 124, function()
+                    local ok, err = GemOrderTest_RemoveCoLeader(room.id, name)
                     if not ok then
                         print("|cff00ccffGemOrderTest|r " .. (err or "Action failed."))
                     else
@@ -1076,10 +1086,20 @@ function UI:RefreshStockPanel()
         end
 
         for _, entry in ipairs(listing) do
-            local line = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-            line:SetPoint("TOPLEFT", indent, -y)
+            local row = CreateFrame("Button", nil, parent)
+            row:SetPoint("TOPLEFT", indent, -y)
+            row:SetSize(320, 16)
+            local line = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+            line:SetPoint("LEFT", 0, 0)
+            line:SetJustifyH("LEFT")
             line:SetText(string.format("%dx %s", entry.count, ColorizeGem(entry.name)))
-            table.insert(panel.stockLines, line)
+            row:SetWidth(line:GetStringWidth() + 4)
+            if entry.itemId then
+                GemOrderTest_AttachItemTooltip(row, function()
+                    return entry.itemId
+                end)
+            end
+            table.insert(panel.stockLines, row)
             y = y + 16
         end
     end
@@ -1338,32 +1358,51 @@ function UI:RefreshRecipesPanel()
     panel.content:SetHeight(math.max(400, y + 24))
 end
 
-function UI:CreateGearDropdown(name, parent, point, x, y, frameRef, width)
-    local dropdown = CreateFrame("Frame", name, parent, "UIDropDownMenuTemplate")
-    dropdown:SetPoint(point, parent, point, x, y)
+function UI:ClearGearItemSelection(frameRef)
+    frameRef.selectedGear = nil
+    if frameRef.gearDropdown then
+        SetDropdownDisplayText(frameRef.gearDropdown, "Select gear...")
+    end
+end
 
-    UIDropDownMenu_SetWidth(dropdown, width or 300)
-    UIDropDownMenu_Initialize(dropdown, function()
-        self:BuildDropdownCaches()
-        GemOrderTest_BeginDropdownItemTooltips()
-        local buttonIndex = 0
+function UI:PopulateGearDropdown(dropdown, frameRef)
+    self:BuildDropdownCaches()
+    GemOrderTest_ClearDropdownItemTooltips()
+    local buttonIndex = 0
+    local indexToItemId = {}
+    local category = frameRef.selectedGearCategory
 
-        for _, entry in ipairs(self.gearMenuEntries) do
-            local info = UIDropDownMenu_CreateInfo()
-            if entry.kind == "clear" then
-                info.text = "Select gear..."
-                info.value = 0
-                MarkDropdownSelection(info, not frameRef.selectedGear)
-                info.func = function()
-                    SetDropdownDisplayText(dropdown, "Select gear...")
-                    frameRef.selectedGear = nil
-                end
-            elseif entry.kind == "header" then
-                info.text = entry.text
-                info.isTitle = true
-                info.notCheckable = true
-            elseif entry.kind == "gear" then
-                local gear = entry.gear
+    local clearInfo = UIDropDownMenu_CreateInfo()
+    clearInfo.text = "Select gear..."
+    clearInfo.value = 0
+    MarkDropdownSelection(clearInfo, not frameRef.selectedGear)
+    clearInfo.func = function()
+        self:ClearGearItemSelection(frameRef)
+    end
+    UIDropDownMenu_AddButton(clearInfo)
+    buttonIndex = buttonIndex + 1
+
+    if not category then
+        local info = UIDropDownMenu_CreateInfo()
+        info.text = "Choose PVE or PVP first"
+        info.isTitle = true
+        info.notCheckable = true
+        UIDropDownMenu_AddButton(info)
+        GemOrderTest_ApplyDropdownItemTooltips(indexToItemId)
+        return
+    end
+
+    if category == "PVE" then
+        for _, raid in ipairs(GemOrderTest_GearRaids) do
+            local header = UIDropDownMenu_CreateInfo()
+            header.text = raid
+            header.isTitle = true
+            header.notCheckable = true
+            UIDropDownMenu_AddButton(header)
+            buttonIndex = buttonIndex + 1
+
+            for _, gear in ipairs(GemOrderTest_GetGearByRaid(raid)) do
+                local info = UIDropDownMenu_CreateInfo()
                 info.text = gear.label
                 info.value = gear.itemId
                 MarkDropdownSelection(info, frameRef.selectedGear and frameRef.selectedGear.itemId == gear.itemId)
@@ -1371,21 +1410,152 @@ function UI:CreateGearDropdown(name, parent, point, x, y, frameRef, width)
                     SetDropdownDisplayText(dropdown, gear.name)
                     frameRef.selectedGear = gear
                 end
+                UIDropDownMenu_AddButton(info)
+                buttonIndex = buttonIndex + 1
+                indexToItemId[buttonIndex] = gear.itemId
+            end
+        end
+    else
+        local className = frameRef.selectedGearClass
+        if not className then
+            local info = UIDropDownMenu_CreateInfo()
+            info.text = "Choose a class first"
+            info.isTitle = true
+            info.notCheckable = true
+            UIDropDownMenu_AddButton(info)
+            GemOrderTest_ApplyDropdownItemTooltips(indexToItemId)
+            return
+        end
+
+        for _, gear in ipairs(GemOrderTest_GetGearByClass(className)) do
+            local info = UIDropDownMenu_CreateInfo()
+            info.text = gear.label
+            info.value = gear.itemId
+            MarkDropdownSelection(info, frameRef.selectedGear and frameRef.selectedGear.itemId == gear.itemId)
+            info.func = function()
+                SetDropdownDisplayText(dropdown, gear.name)
+                frameRef.selectedGear = gear
             end
             UIDropDownMenu_AddButton(info)
             buttonIndex = buttonIndex + 1
-            if entry.kind == "gear" then
-                GemOrderTest_QueueDropdownItemTooltip(buttonIndex, entry.gear.itemId)
-            end
+            indexToItemId[buttonIndex] = gear.itemId
         end
+    end
 
-        GemOrderTest_ApplyDropdownItemTooltips()
+    GemOrderTest_ApplyDropdownItemTooltips(indexToItemId)
+end
+
+function UI:CreateGearDropdown(name, parent, point, x, y, frameRef, width)
+    local dropdown = CreateFrame("Frame", name, parent, "UIDropDownMenuTemplate")
+    dropdown:SetPoint(point, parent, point, x, y)
+
+    UIDropDownMenu_SetWidth(dropdown, width or 300)
+    UIDropDownMenu_Initialize(dropdown, function()
+        self:PopulateGearDropdown(dropdown, frameRef)
     end)
 
     SetDropdownDisplayText(dropdown, "Select gear...")
     GemOrderTest_AttachDropdownTooltips(dropdown, function()
         return frameRef.selectedGear and frameRef.selectedGear.itemId
     end)
+    ConfigureOrderDropdown(dropdown, width)
+    return dropdown
+end
+
+function UI:CreateGearTypeDropdown(name, parent, point, x, y, frameRef, width)
+    local dropdown = CreateFrame("Frame", name, parent, "UIDropDownMenuTemplate")
+    dropdown:SetPoint(point, parent, point, x, y)
+    UIDropDownMenu_SetWidth(dropdown, width or 300)
+
+    UIDropDownMenu_Initialize(dropdown, function()
+        GemOrderTest_ClearDropdownItemTooltips()
+        local clearInfo = UIDropDownMenu_CreateInfo()
+        clearInfo.text = GEAR_TYPE_PLACEHOLDER
+        MarkDropdownSelection(clearInfo, not frameRef.selectedGearCategory)
+        clearInfo.func = function()
+            frameRef.selectedGearCategory = nil
+            frameRef.selectedGearClass = nil
+            SetDropdownDisplayText(dropdown, GEAR_TYPE_PLACEHOLDER)
+            SetDropdownDisplayText(frameRef.gearClassDropdown, GEAR_CLASS_PLACEHOLDER)
+            self:ClearGearItemSelection(frameRef)
+            if frameRef.gearClassLabel then
+                frameRef.gearClassLabel:Hide()
+            end
+            if frameRef.gearClassDropdown then
+                frameRef.gearClassDropdown:Hide()
+            end
+            self:RelayoutOrderForm()
+        end
+        UIDropDownMenu_AddButton(clearInfo)
+
+        for _, category in ipairs(GemOrderTest_GearCategories) do
+            local info = UIDropDownMenu_CreateInfo()
+            info.text = category
+            MarkDropdownSelection(info, frameRef.selectedGearCategory == category)
+            info.func = function()
+                frameRef.selectedGearCategory = category
+                frameRef.selectedGearClass = nil
+                SetDropdownDisplayText(dropdown, category)
+                SetDropdownDisplayText(frameRef.gearClassDropdown, GEAR_CLASS_PLACEHOLDER)
+                self:ClearGearItemSelection(frameRef)
+                if category == "PVP" then
+                    if frameRef.gearClassLabel then
+                        frameRef.gearClassLabel:Show()
+                    end
+                    if frameRef.gearClassDropdown then
+                        frameRef.gearClassDropdown:Show()
+                    end
+                else
+                    if frameRef.gearClassLabel then
+                        frameRef.gearClassLabel:Hide()
+                    end
+                    if frameRef.gearClassDropdown then
+                        frameRef.gearClassDropdown:Hide()
+                    end
+                end
+                self:RelayoutOrderForm()
+            end
+            UIDropDownMenu_AddButton(info)
+        end
+    end)
+
+    SetDropdownDisplayText(dropdown, GEAR_TYPE_PLACEHOLDER)
+    ConfigureOrderDropdown(dropdown, width)
+    return dropdown
+end
+
+function UI:CreateGearClassDropdown(name, parent, point, x, y, frameRef, width)
+    local dropdown = CreateFrame("Frame", name, parent, "UIDropDownMenuTemplate")
+    dropdown:SetPoint(point, parent, point, x, y)
+    UIDropDownMenu_SetWidth(dropdown, width or 300)
+    dropdown:Hide()
+
+    UIDropDownMenu_Initialize(dropdown, function()
+        GemOrderTest_ClearDropdownItemTooltips()
+        local clearInfo = UIDropDownMenu_CreateInfo()
+        clearInfo.text = GEAR_CLASS_PLACEHOLDER
+        MarkDropdownSelection(clearInfo, not frameRef.selectedGearClass)
+        clearInfo.func = function()
+            frameRef.selectedGearClass = nil
+            SetDropdownDisplayText(dropdown, GEAR_CLASS_PLACEHOLDER)
+            self:ClearGearItemSelection(frameRef)
+        end
+        UIDropDownMenu_AddButton(clearInfo)
+
+        for _, className in ipairs(GemOrderTest_PvpClasses) do
+            local info = UIDropDownMenu_CreateInfo()
+            info.text = className
+            MarkDropdownSelection(info, frameRef.selectedGearClass == className)
+            info.func = function()
+                frameRef.selectedGearClass = className
+                SetDropdownDisplayText(dropdown, className)
+                self:ClearGearItemSelection(frameRef)
+            end
+            UIDropDownMenu_AddButton(info)
+        end
+    end)
+
+    SetDropdownDisplayText(dropdown, GEAR_CLASS_PLACEHOLDER)
     ConfigureOrderDropdown(dropdown, width)
     return dropdown
 end
@@ -1397,8 +1567,9 @@ function UI:CreateGemDropdown(name, parent, point, x, y, onSelect, getSelected, 
     UIDropDownMenu_SetWidth(dropdown, width or 240)
     UIDropDownMenu_Initialize(dropdown, function()
         self:BuildDropdownCaches()
-        GemOrderTest_BeginDropdownItemTooltips()
+        GemOrderTest_ClearDropdownItemTooltips()
         local buttonIndex = 0
+        local indexToItemId = {}
 
         for _, entry in ipairs(self.gemMenuEntries) do
             local info = UIDropDownMenu_CreateInfo()
@@ -1427,11 +1598,11 @@ function UI:CreateGemDropdown(name, parent, point, x, y, onSelect, getSelected, 
             UIDropDownMenu_AddButton(info)
             buttonIndex = buttonIndex + 1
             if entry.kind == "gem" then
-                GemOrderTest_QueueDropdownItemTooltip(buttonIndex, entry.gem.itemId)
+                indexToItemId[buttonIndex] = entry.gem.itemId
             end
         end
 
-        GemOrderTest_ApplyDropdownItemTooltips()
+        GemOrderTest_ApplyDropdownItemTooltips(indexToItemId)
     end)
 
     SetDropdownDisplayText(dropdown, GEM_PLACEHOLDER)
@@ -1454,23 +1625,42 @@ function UI:RelayoutOrderForm()
     local function placeRow(label, dropdown)
         if label then
             label:ClearAllPoints()
-            label:SetPoint("TOPLEFT", inset, "TOPLEFT", 16, -y)
+            label:SetJustifyH("LEFT")
+            label:SetPoint("TOPLEFT", inset, "TOPLEFT", 16, -(y + ORDER_DIALOG_LABEL_V_OFFSET))
         end
         if dropdown then
             dropdown:ClearAllPoints()
-            dropdown:SetPoint("TOPLEFT", inset, "TOPLEFT", ORDER_DIALOG_FIELD_X, -(y + 8))
+            dropdown:SetPoint("TOPLEFT", inset, "TOPLEFT", ORDER_DIALOG_FIELD_X, -y)
         end
         y = y + ORDER_DIALOG_ROW_GAP
     end
 
+    placeRow(f.gearTypeLabel, f.gearTypeDropdown)
+    if f.selectedGearCategory == "PVP" then
+        if f.gearClassLabel then
+            f.gearClassLabel:Show()
+        end
+        if f.gearClassDropdown then
+            f.gearClassDropdown:Show()
+        end
+        placeRow(f.gearClassLabel, f.gearClassDropdown)
+    else
+        if f.gearClassLabel then
+            f.gearClassLabel:Hide()
+        end
+        if f.gearClassDropdown then
+            f.gearClassDropdown:Hide()
+        end
+    end
     placeRow(f.itemLabel, f.gearDropdown)
     placeRow(f.roleLabel, f.roleDropdown)
 
     for i = 1, 3 do
         f.gemLabels[i]:ClearAllPoints()
-        f.gemLabels[i]:SetPoint("TOPLEFT", inset, "TOPLEFT", 16, -y)
+        f.gemLabels[i]:SetJustifyH("LEFT")
+        f.gemLabels[i]:SetPoint("TOPLEFT", inset, "TOPLEFT", 16, -(y + ORDER_DIALOG_LABEL_V_OFFSET))
         f.gemDropdowns[i]:ClearAllPoints()
-        f.gemDropdowns[i]:SetPoint("TOPLEFT", inset, "TOPLEFT", ORDER_DIALOG_FIELD_X, -(y + 8))
+        f.gemDropdowns[i]:SetPoint("TOPLEFT", inset, "TOPLEFT", ORDER_DIALOG_FIELD_X, -y)
         y = y + ORDER_DIALOG_ROW_GAP
 
         local warning = f.gemWarnings[i]
@@ -1489,9 +1679,10 @@ function UI:RelayoutOrderForm()
 
     y = y + ORDER_DIALOG_NOTES_GAP
     f.notesLabel:ClearAllPoints()
-    f.notesLabel:SetPoint("TOPLEFT", inset, "TOPLEFT", 16, -y)
+    f.notesLabel:SetJustifyH("LEFT")
+    f.notesLabel:SetPoint("TOPLEFT", inset, "TOPLEFT", 16, -(y + ORDER_DIALOG_LABEL_V_OFFSET))
     f.notesInput:ClearAllPoints()
-    f.notesInput:SetPoint("TOPLEFT", inset, "TOPLEFT", ORDER_DIALOG_FIELD_X, -(y + 4))
+    f.notesInput:SetPoint("TOPLEFT", inset, "TOPLEFT", ORDER_DIALOG_FIELD_X, -y)
 
     local contentBottom = y + 4 + 20
     local dialogHeight = contentBottom + ORDER_DIALOG_TITLE_HEIGHT + 12 + ORDER_DIALOG_FOOTER_HEIGHT + 8
@@ -1578,7 +1769,6 @@ function UI:CreateOrderDialog()
     inset:SetPoint("BOTTOMRIGHT", -12, ORDER_DIALOG_FOOTER_HEIGHT)
 
     EnableDropdownDismissLayer(panel)
-    EnableDropdownDismissLayer(inset)
 
     dialog.panel = panel
     dialog.footer = footer
@@ -1638,10 +1828,41 @@ function UI:CreateOrderForm()
     local inset = dialog.inset
     local y = -8
 
+    f.gearTypeLabel = CreateLabel(inset, "Type:", "GameFontHighlight")
+    f.gearTypeLabel:SetPoint("TOPLEFT", 16, y)
+
+    f.selectedGearCategory = nil
+    f.selectedGearClass = nil
+    f.selectedGear = nil
+
+    f.gearTypeDropdown = self:CreateGearTypeDropdown(
+        "GemOrderTestGearTypeDropdown",
+        inset,
+        "TOPLEFT",
+        90,
+        y + 8,
+        f,
+        ORDER_DIALOG_DROPDOWN_WIDTH
+    )
+
+    y = y - ORDER_DIALOG_ROW_GAP
+    f.gearClassLabel = CreateLabel(inset, "Class:", "GameFontHighlight")
+    f.gearClassLabel:SetPoint("TOPLEFT", 16, y)
+    f.gearClassLabel:Hide()
+
+    f.gearClassDropdown = self:CreateGearClassDropdown(
+        "GemOrderTestGearClassDropdown",
+        inset,
+        "TOPLEFT",
+        90,
+        y + 8,
+        f,
+        ORDER_DIALOG_DROPDOWN_WIDTH
+    )
+
+    y = y - ORDER_DIALOG_ROW_GAP
     f.itemLabel = CreateLabel(inset, "Gear:", "GameFontHighlight")
     f.itemLabel:SetPoint("TOPLEFT", 16, y)
-
-    f.selectedGear = nil
 
     f.gearDropdown = self:CreateGearDropdown(
         "GemOrderTestGearDropdown",
@@ -1661,6 +1882,7 @@ function UI:CreateOrderForm()
     f.roleDropdown = CreateFrame("Frame", "GemOrderTestRoleDropdown", inset, "UIDropDownMenuTemplate")
     f.roleDropdown:SetPoint("TOPLEFT", 90, y + 8)
     UIDropDownMenu_Initialize(f.roleDropdown, function()
+        GemOrderTest_ClearDropdownItemTooltips()
         local info = UIDropDownMenu_CreateInfo()
         info.text = ROLE_PLACEHOLDER
         info.notCheckable = true
@@ -1755,8 +1977,18 @@ function UI:CreateOrderForm()
             print("|cff00ccffGemOrderTest|r " .. err)
         else
             print("|cff00ccffGemOrderTest|r Order submitted!")
+            f.selectedGearCategory = nil
+            f.selectedGearClass = nil
             f.selectedGear = nil
+            SetDropdownDisplayText(f.gearTypeDropdown, GEAR_TYPE_PLACEHOLDER)
+            SetDropdownDisplayText(f.gearClassDropdown, GEAR_CLASS_PLACEHOLDER)
             SetDropdownDisplayText(f.gearDropdown, "Select gear...")
+            if f.gearClassLabel then
+                f.gearClassLabel:Hide()
+            end
+            if f.gearClassDropdown then
+                f.gearClassDropdown:Hide()
+            end
             f.selectedRole = nil
             SetDropdownDisplayText(f.roleDropdown, ROLE_PLACEHOLDER)
             ResetNotesInput(f.notesInput)
@@ -1872,10 +2104,17 @@ function UI:CreateGemIconRow(parent, order, yOffset, startX)
                 return itemId
             end)
 
-            local label = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-            label:SetPoint("LEFT", btn, "RIGHT", 4, 0)
+            local labelBtn = CreateFrame("Button", nil, parent)
+            labelBtn:SetPoint("TOPLEFT", btn, "TOPRIGHT", 4, 0)
+            labelBtn:SetSize(1, 14)
+            local label = labelBtn:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+            label:SetPoint("LEFT", 0, 0)
             label:SetText(ColorizeGem(gemName))
             label:SetJustifyH("LEFT")
+            labelBtn:SetWidth(label:GetStringWidth())
+            GemOrderTest_AttachItemTooltip(labelBtn, function()
+                return itemId
+            end)
 
             x = x + 32 + label:GetStringWidth() + 24
         end
@@ -2016,11 +2255,22 @@ function UI:CreateOrderRow(order, yOffset)
         end)
     end
 
-    local itemText = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    itemText:SetPoint("TOPLEFT", gearItemId and (contentX + 32) or contentX, contentTop - 4)
-    itemText:SetWidth(contentWidth - (gearItemId and 120 or 88))
+    local itemBtn = CreateFrame("Button", nil, row)
+    itemBtn:SetPoint("TOPLEFT", gearItemId and (contentX + 32) or contentX, contentTop - 4)
+    itemBtn:SetSize(contentWidth - (gearItemId and 120 or 88), 16)
+    local itemText = itemBtn:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    itemText:SetPoint("LEFT", 0, 0)
     itemText:SetJustifyH("LEFT")
     itemText:SetText(ColorizeItem(order.item or "Unknown item"))
+    itemBtn:SetWidth(itemText:GetStringWidth() + 4)
+    if gearItemId or order.itemLink then
+        GemOrderTest_AttachItemTooltip(itemBtn, function()
+            if order.itemLink then
+                return order.itemLink
+            end
+            return gearItemId
+        end)
+    end
 
     local gemsTop = contentTop - 34
     local gemsLabel = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
@@ -2030,11 +2280,11 @@ function UI:CreateOrderRow(order, yOffset)
     self:CreateGemIconRow(row, order, gemsTop, contentX)
 
     if order.notes and order.notes ~= "" then
-        local notes = row:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
+        local notes = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
         notes:SetPoint("BOTTOMLEFT", 10, 6)
         notes:SetWidth(contentWidth - 20)
         notes:SetJustifyH("LEFT")
-        notes:SetText("Note: " .. order.notes)
+        notes:SetText("|cffffffffNote: " .. order.notes .. "|r")
     end
 
     local player = UnitName("player")

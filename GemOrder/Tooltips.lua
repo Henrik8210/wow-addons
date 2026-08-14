@@ -69,22 +69,6 @@ function GemOrder_ShowItemTooltip(owner, itemId, anchor)
     GameTooltip:Show()
 end
 
-function GemOrder_ShowDropdownItemTooltip(itemId)
-    if not itemId then
-        return
-    end
-    GameTooltip:SetOwner(UIParent, "ANCHOR_NONE")
-    GameTooltip:ClearAllPoints()
-    local x, y = GetCursorPosition()
-    local scale = UIParent:GetEffectiveScale()
-    GameTooltip:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", (x / scale) + 16, y / scale)
-    GameTooltip:SetHyperlink("item:" .. itemId)
-    if GameTooltip.SetClampedToScreen then
-        GameTooltip:SetClampedToScreen(true)
-    end
-    GameTooltip:Show()
-end
-
 function GemOrder_ShowLinkTooltip(owner, link, anchor)
     if not link or not owner then
         return
@@ -99,6 +83,92 @@ end
 
 function GemOrder_HideTooltip()
     GameTooltip:Hide()
+end
+
+local function ResolveItemLink(itemIdOrLink)
+    if not itemIdOrLink then
+        return nil
+    end
+
+    if type(itemIdOrLink) == "string" then
+        if itemIdOrLink:find("|Hitem:") then
+            return itemIdOrLink
+        end
+        local itemId = tonumber(itemIdOrLink:match("item:(%d+)"))
+        if itemId then
+            itemIdOrLink = itemId
+        else
+            return nil
+        end
+    end
+
+    if type(itemIdOrLink) ~= "number" or itemIdOrLink <= 0 then
+        return nil
+    end
+
+    local _, link = GetItemInfo(itemIdOrLink)
+    if link then
+        return link
+    end
+
+    GameTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+    GameTooltip:SetHyperlink("item:" .. itemIdOrLink)
+    GameTooltip:Hide()
+    _, link = GetItemInfo(itemIdOrLink)
+    return link
+end
+
+function GemOrder_InsertChatItemLink(itemIdOrLink)
+    local link = ResolveItemLink(itemIdOrLink)
+    if not link then
+        return false
+    end
+
+    if HandleModifiedItemClick and HandleModifiedItemClick(link) then
+        return true
+    end
+
+    if ChatEdit_InsertLink and ChatEdit_InsertLink(link) then
+        return true
+    end
+
+    local editBox = ChatFrame1EditBox
+    if editBox and editBox:IsShown() then
+        editBox:Insert(link)
+        editBox:SetFocus()
+        return true
+    end
+
+    if ChatFrame_OpenChat then
+        ChatFrame_OpenChat("")
+        editBox = ChatFrame1EditBox
+        if editBox then
+            editBox:Insert(link)
+            editBox:SetFocus()
+            return true
+        end
+    end
+
+    return false
+end
+
+local function IsShiftChatLinkClick(button)
+    if button ~= "LeftButton" and button ~= "LeftButtonUp" then
+        return false
+    end
+    if IsModifiedClick and IsModifiedClick("CHATLINK") then
+        return true
+    end
+    return IsShiftKeyDown()
+end
+
+local function AttachShiftClickLink(frame, getLinkFn)
+    frame:SetScript("OnMouseUp", function(self, button)
+        if not IsShiftChatLinkClick(button) then
+            return
+        end
+        GemOrder_InsertChatItemLink(getLinkFn(self))
+    end)
 end
 
 function GemOrder_RegisterEscapeFrame(frame)
@@ -187,79 +257,16 @@ function GemOrder_AttachItemTooltip(frame, getLinkFn)
         end
     end)
     frame:SetScript("OnLeave", GemOrder_HideTooltip)
+    AttachShiftClickLink(frame, getLinkFn)
 end
 
-local function StripColorCodes(text)
-    if not text then
-        return nil
-    end
-    return text:gsub("|c%x%x%x%x%x%x%x", ""):gsub("|r", "")
-end
-
-local function GetDropdownButtonText(button)
-    if not button or not button.GetName then
-        return nil
-    end
-    local textFrame = _G[button:GetName() .. "NormalText"]
-    if textFrame and textFrame.GetText then
-        return StripColorCodes(textFrame:GetText())
-    end
-    if button.GetText then
-        return StripColorCodes(button:GetText())
-    end
-    return nil
-end
-
-local function LookupItemIdByDisplayText(text)
-    if not text or text == "" then
-        return nil
-    end
-    if GemOrder_GemByName and GemOrder_GemByName[text] then
-        return GemOrder_GemByName[text].itemId
-    end
-    if GemOrder_Gear then
-        for _, gear in ipairs(GemOrder_Gear) do
-            if gear.label == text or gear.name == text then
-                return gear.itemId
-            end
-        end
-    end
-    return nil
-end
-
-local function GetDropdownButtonItemId(button)
-    if not button then
-        return nil
-    end
-
-    local itemId = button.gemOrderItemId
-    local index = button.GetID and button:GetID()
-    if (not itemId or itemId <= 0) and index and GemOrder._dropdownItemTooltips then
-        itemId = GemOrder._dropdownItemTooltips[index]
-    end
-    if type(itemId) == "number" and itemId > 0 then
-        return itemId
-    end
-
-    if type(button.value) == "number" and button.value > 0 then
-        return button.value
-    end
-
-    return LookupItemIdByDisplayText(GetDropdownButtonText(button))
-end
-
-local function IsGemOrderItemDropdown(dropdown)
-    if not dropdown or not dropdown.GetName then
-        return false
-    end
-    local name = dropdown:GetName() or ""
-    return name:match("^GemOrderGearDropdown") ~= nil
-        or name:match("^GemOrderGemDropdown") ~= nil
-end
-
-local function ClearDropdownListItemIds(level)
+function GemOrder_ClearDropdownItemTooltips(level)
     level = level or UIDROPDOWNMENU_MENU_LEVEL or 1
     local maxButtons = UIDROPDOWNMENU_MAXBUTTONS or 32
+    if UIDropDownMenu_GetNumberOfButtons then
+        maxButtons = UIDropDownMenu_GetNumberOfButtons(level) or maxButtons
+    end
+
     for i = 1, maxButtons do
         local button = _G["DropDownList" .. level .. "Button" .. i]
         if button then
@@ -268,36 +275,60 @@ local function ClearDropdownListItemIds(level)
     end
 end
 
-function GemOrder_BeginDropdownItemTooltips()
-    GemOrder._dropdownItemTooltips = {}
-    ClearDropdownListItemIds(UIDROPDOWNMENU_MENU_LEVEL or 1)
-end
-
-function GemOrder_QueueDropdownItemTooltip(buttonIndex, itemId)
+function GemOrder_AttachDropdownItemButton(itemId, buttonIndex)
     if not itemId or itemId <= 0 or not buttonIndex then
         return
     end
-    GemOrder._dropdownItemTooltips = GemOrder._dropdownItemTooltips or {}
-    GemOrder._dropdownItemTooltips[buttonIndex] = itemId
-end
 
-function GemOrder_ApplyDropdownItemTooltips(level)
-    level = level or UIDROPDOWNMENU_MENU_LEVEL or 1
-    local map = GemOrder._dropdownItemTooltips
-    if not map or not IsGemOrderItemDropdown(UIDROPDOWNMENU_OPEN_MENU) then
+    local level = UIDROPDOWNMENU_MENU_LEVEL or 1
+    local button = _G["DropDownList" .. level .. "Button" .. buttonIndex]
+    if not button then
         return
     end
 
-    local function apply()
-        if not IsGemOrderItemDropdown(UIDROPDOWNMENU_OPEN_MENU) then
+    button.gemOrderItemId = itemId
+    button:SetScript("OnEnter", function(self)
+        if UIDropDownMenuButton_OnEnter then
+            UIDropDownMenuButton_OnEnter(self)
+        end
+        local linkedItemId = self.gemOrderItemId
+        if linkedItemId
+            and type(self.value) == "number"
+            and self.value > 0
+            and self.value == linkedItemId then
+            GemOrder_ShowItemTooltip(self, linkedItemId, "ANCHOR_RIGHT")
+        end
+    end)
+    button:SetScript("OnLeave", function(self)
+        GemOrder_HideTooltip()
+        if UIDropDownMenuButton_OnLeave then
+            UIDropDownMenuButton_OnLeave(self)
+        end
+    end)
+    button:SetScript("OnMouseUp", function(self, mouseButton)
+        if not IsShiftChatLinkClick(mouseButton) then
             return
         end
-        GemOrder_ElevateDropdownList(level)
-        for index, itemId in pairs(map) do
-            local button = _G["DropDownList" .. level .. "Button" .. index]
-            if button then
-                button.gemOrderItemId = itemId
-            end
+        local linkedItemId = self.gemOrderItemId
+        if linkedItemId
+            and type(self.value) == "number"
+            and self.value > 0
+            and self.value == linkedItemId then
+            GemOrder_InsertChatItemLink(linkedItemId)
+        end
+    end)
+end
+
+function GemOrder_ApplyDropdownItemTooltips(indexToItemId)
+    if not indexToItemId then
+        return
+    end
+
+    local level = UIDROPDOWNMENU_MENU_LEVEL or 1
+    local function apply()
+        GemOrder_ClearDropdownItemTooltips(level)
+        for index, itemId in pairs(indexToItemId) do
+            GemOrder_AttachDropdownItemButton(itemId, index)
         end
     end
 
@@ -306,74 +337,6 @@ function GemOrder_ApplyDropdownItemTooltips(level)
     else
         apply()
     end
-end
-
-local function SaveMouseEnabled(frame, storage, key)
-    if frame and frame.IsMouseEnabled and frame:IsMouseEnabled() then
-        storage[key] = true
-        frame:EnableMouse(false)
-    end
-end
-
-local function RestoreMouseEnabled(frame, storage, key)
-    if frame and storage[key] then
-        frame:EnableMouse(true)
-        storage[key] = nil
-    end
-end
-
-function GemOrder_ElevateDropdownList(level)
-    if not IsGemOrderItemDropdown(UIDROPDOWNMENU_OPEN_MENU) then
-        return
-    end
-
-    level = level or UIDROPDOWNMENU_MENU_LEVEL or 1
-    local list = _G["DropDownList" .. level]
-    if not list then
-        return
-    end
-
-    list:SetFrameStrata("FULLSCREEN_DIALOG")
-    list:SetFrameLevel(1000)
-
-    if list.gemOrderMouseSaved then
-        return
-    end
-
-    local saved = {}
-    list.gemOrderMouseSaved = saved
-
-    local ui = GemOrder.UI and GemOrder.UI.frame
-    if not ui then
-        return
-    end
-
-    if ui.orderDialogOverlay then
-        SaveMouseEnabled(ui.orderDialogOverlay, saved, "overlay")
-    end
-    if ui.orderDialog and ui.orderDialog.titleBar then
-        SaveMouseEnabled(ui.orderDialog.titleBar, saved, "titleBar")
-    end
-    SaveMouseEnabled(ui, saved, "mainFrame")
-end
-
-function GemOrder_RestoreDropdownListMouseBlockers(level)
-    level = level or 1
-    local list = _G["DropDownList" .. level]
-    if not list or not list.gemOrderMouseSaved then
-        return
-    end
-
-    local saved = list.gemOrderMouseSaved
-    local ui = GemOrder.UI and GemOrder.UI.frame
-    if ui then
-        RestoreMouseEnabled(ui, saved, "mainFrame")
-        RestoreMouseEnabled(ui.orderDialogOverlay, saved, "overlay")
-        if ui.orderDialog then
-            RestoreMouseEnabled(ui.orderDialog.titleBar, saved, "titleBar")
-        end
-    end
-    list.gemOrderMouseSaved = nil
 end
 
 function GemOrder_AttachDropdownTooltips(dropdown, getItemIdFn)
@@ -386,70 +349,5 @@ function GemOrder_AttachDropdownTooltips(dropdown, getItemIdFn)
 end
 
 function GemOrder_HookDropdownMenuTooltips()
-    if GemOrder.dropdownTooltipHooked or not hooksecurefunc then
-        return
-    end
-    GemOrder.dropdownTooltipHooked = true
-
-    hooksecurefunc("UIDropDownMenuButton_OnEnter", function(self)
-        if not self or not self:IsShown() then
-            return
-        end
-        if not IsGemOrderItemDropdown(UIDROPDOWNMENU_OPEN_MENU) then
-            return
-        end
-        local itemId = GetDropdownButtonItemId(self)
-        if itemId then
-            GemOrder_ShowDropdownItemTooltip(itemId)
-        end
-    end)
-
-    hooksecurefunc("UIDropDownMenuButton_OnLeave", function(self)
-        if not self or not IsGemOrderItemDropdown(UIDROPDOWNMENU_OPEN_MENU) then
-            return
-        end
-        GemOrder_HideTooltip()
-    end)
-
-    if UIDropDownMenu_CreateButtons then
-        hooksecurefunc("UIDropDownMenu_CreateButtons", function(level)
-            GemOrder_ApplyDropdownItemTooltips(level or UIDROPDOWNMENU_MENU_LEVEL or 1)
-        end)
-    end
-
-    if ToggleDropDownMenu then
-        hooksecurefunc("ToggleDropDownMenu", function(level, _, dropDownFrame)
-            if not IsGemOrderItemDropdown(dropDownFrame) then
-                return
-            end
-            local menuLevel = level or 1
-            local function elevate()
-                GemOrder_ElevateDropdownList(menuLevel)
-            end
-            if C_Timer and C_Timer.After then
-                C_Timer.After(0, elevate)
-            else
-                elevate()
-            end
-        end)
-    end
-
-    for i = 1, (UIDROPDOWNMENU_MAXLEVELS or 2) do
-        local list = _G["DropDownList" .. i]
-        if list then
-            if list.HookScript then
-                list:HookScript("OnHide", function()
-                    GemOrder_RestoreDropdownListMouseBlockers(i)
-                end)
-            else
-                local prior = list:GetScript("OnHide")
-                list:SetScript("OnHide", function(...)
-                    GemOrder_RestoreDropdownListMouseBlockers(i)
-                    if prior then
-                        prior(...)
-                    end
-                end)
-            end
-        end
-    end
+    -- Per-item tooltips are attached when each gear/gem dropdown opens.
 end

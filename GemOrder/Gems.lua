@@ -1,10 +1,12 @@
 -- Phase 3 epic gem cuts (Indormi recipes) + raw materials from BT / Hyjal
+-- Item IDs verified at wowhead.com/tbc/item=...
 GemOrder_Gems = {
     { name = "Crimson Spinel", color = "Red", raw = true, stats = "Uncut red epic", itemId = 32227 },
-    { name = "Lionseye", color = "Yellow", raw = true, stats = "Uncut yellow epic", itemId = 32205 },
-    { name = "Empyrean Sapphire", color = "Blue", raw = true, stats = "Uncut blue epic", itemId = 32229 },
-    { name = "Seaspray Emerald", color = "Green", raw = true, stats = "Uncut green epic", itemId = 32230 },
-    { name = "Shadowsong Amethyst", color = "Purple", raw = true, stats = "Uncut purple epic", itemId = 32231 },
+    { name = "Lionseye", color = "Yellow", raw = true, stats = "Uncut yellow epic", itemId = 32229 },
+    { name = "Empyrean Sapphire", color = "Blue", raw = true, stats = "Uncut blue epic", itemId = 32228 },
+    { name = "Seaspray Emerald", color = "Green", raw = true, stats = "Uncut green epic", itemId = 32249 },
+    { name = "Shadowsong Amethyst", color = "Purple", raw = true, stats = "Uncut purple epic", itemId = 32230 },
+    { name = "Pyrestone", color = "Orange", raw = true, stats = "Uncut orange epic", itemId = 32231 },
 
     -- Pre-Phase 3 uncut rare gems (blue item quality)
     { name = "Living Ruby", color = "Red", raw = true, rare = true, stats = "Uncut red rare", itemId = 23436 },
@@ -65,33 +67,46 @@ GemOrder_Gems = {
     { name = "Subtle Crimson Spinel", color = "Red", material = "Crimson Spinel", stats = "+10 Dodge Rating", itemId = 32198 },
     { name = "Flashing Crimson Spinel", color = "Red", material = "Crimson Spinel", stats = "+10 Parry Rating", itemId = 32199 },
 
-    { name = "Great Lionseye", color = "Yellow", material = "Lionseye", stats = "+10 Critical Strike Rating", itemId = 32204 },
-    { name = "Smooth Lionseye", color = "Yellow", material = "Lionseye", stats = "+10 Hit Rating", itemId = 32206 },
-    { name = "Rigid Lionseye", color = "Yellow", material = "Lionseye", stats = "+10 Defense Rating", itemId = 32209 },
-    { name = "Gleaming Lionseye", color = "Yellow", material = "Lionseye", stats = "+10 Intellect", itemId = 32210 },
-    { name = "Thick Lionseye", color = "Yellow", material = "Lionseye", stats = "+10 Resilience Rating", itemId = 32207 },
-    { name = "Mystic Lionseye", color = "Yellow", material = "Lionseye", stats = "+10 Spell Penetration", itemId = 32208 },
+    { name = "Brilliant Lionseye", color = "Yellow", material = "Lionseye", stats = "+10 Intellect", itemId = 32204 },
+    { name = "Smooth Lionseye", color = "Yellow", material = "Lionseye", stats = "+10 Hit Rating", itemId = 32205 },
+    { name = "Rigid Lionseye", color = "Yellow", material = "Lionseye", stats = "+10 Defense Rating", itemId = 32206 },
+    { name = "Gleaming Lionseye", color = "Yellow", material = "Lionseye", stats = "+10 Critical Strike Rating", itemId = 32207 },
+    { name = "Thick Lionseye", color = "Yellow", material = "Lionseye", stats = "+10 Resilience Rating", itemId = 32208 },
+    { name = "Mystic Lionseye", color = "Yellow", material = "Lionseye", stats = "+10 Spell Penetration", itemId = 32209 },
+    { name = "Great Lionseye", color = "Yellow", material = "Lionseye", stats = "+10 Spell Damage", itemId = 32210 },
+    { name = "Quick Lionseye", color = "Yellow", material = "Lionseye", stats = "+10 Haste Rating", itemId = 35761 },
 
     { name = "Solid Empyrean Sapphire", color = "Blue", material = "Empyrean Sapphire", stats = "+15 Stamina", itemId = 32200 },
-    { name = "Sparkling Empyrean Sapphire", color = "Blue", material = "Empyrean Sapphire", stats = "+10 Spirit", itemId = 32202 },
+    { name = "Sparkling Empyrean Sapphire", color = "Blue", material = "Empyrean Sapphire", stats = "+10 Spirit", itemId = 32201 },
+    { name = "Lustrous Empyrean Sapphire", color = "Blue", material = "Empyrean Sapphire", stats = "+11 Mana per 5 sec.", itemId = 32202 },
     { name = "Stormy Empyrean Sapphire", color = "Blue", material = "Empyrean Sapphire", stats = "+10 Spell Penetration", itemId = 32203 },
-    { name = "Lustrous Empyrean Sapphire", color = "Blue", material = "Empyrean Sapphire", stats = "+11 Mana per 5 sec.", itemId = 32201 },
 
-    { name = "Enduring Seaspray Emerald", color = "Green", material = "Seaspray Emerald", stats = "+5 Defense, +7 Stamina", itemId = 32222 },
-    { name = "Jagged Seaspray Emerald", color = "Green", material = "Seaspray Emerald", stats = "+5 Crit, +7 Stamina", itemId = 32224 },
-    { name = "Steady Seaspray Emerald", color = "Green", material = "Seaspray Emerald", stats = "+5 Resilience, +7 Stamina", itemId = 32225 },
-    { name = "Forceful Seaspray Emerald", color = "Green", material = "Seaspray Emerald", stats = "+5 Attack Power, +7 Stamina", itemId = 32221 },
-    { name = "Radiant Seaspray Emerald", color = "Green", material = "Seaspray Emerald", stats = "+5 Spell Pen, +7 Stamina", itemId = 32223 },
-    { name = "Dazzling Seaspray Emerald", color = "Green", material = "Seaspray Emerald", stats = "+5 Intellect, +2 Mana/5", itemId = 32220 },
-    { name = "Sundered Seaspray Emerald", color = "Green", material = "Seaspray Emerald", stats = "+5 Strength, +7 Stamina", itemId = 32219 },
+    { name = "Inscribed Pyrestone", color = "Orange", material = "Pyrestone", stats = "+5 Strength, +5 Critical Strike Rating", itemId = 32217 },
+    { name = "Potent Pyrestone", color = "Orange", material = "Pyrestone", stats = "+5 Spell Damage, +7 Spell Damage", itemId = 32218 },
+    { name = "Luminous Pyrestone", color = "Orange", material = "Pyrestone", stats = "+11 Healing, +10 Intellect", itemId = 32219 },
+    { name = "Glinting Pyrestone", color = "Orange", material = "Pyrestone", stats = "+5 Spell Damage, +5 Intellect", itemId = 32220 },
+    { name = "Veiled Pyrestone", color = "Orange", material = "Pyrestone", stats = "+5 Spell Damage, +5 Hit Rating", itemId = 32221 },
+    { name = "Wicked Pyrestone", color = "Orange", material = "Pyrestone", stats = "+5 Attack Power, +5 Critical Strike Rating", itemId = 32222 },
+    { name = "Reckless Pyrestone", color = "Orange", material = "Pyrestone", stats = "+5 Spell Damage, +4 Spell Hit Rating", itemId = 35760 },
 
-    { name = "Sovereign Shadowsong Amethyst", color = "Purple", material = "Shadowsong Amethyst", stats = "+5 Strength, +6 Stamina", itemId = 32218 },
-    { name = "Shifting Shadowsong Amethyst", color = "Purple", material = "Shadowsong Amethyst", stats = "+5 Agility, +6 Stamina", itemId = 32217 },
-    { name = "Timeless Shadowsong Amethyst", color = "Purple", material = "Shadowsong Amethyst", stats = "+5 Spell Damage, +6 Stamina", itemId = 32226 },
-    { name = "Purified Shadowsong Amethyst", color = "Purple", material = "Shadowsong Amethyst", stats = "+5 Intellect, +6 Stamina", itemId = 32213 },
-    { name = "Balanced Shadowsong Amethyst", color = "Purple", material = "Shadowsong Amethyst", stats = "+5 Crit, +6 Stamina", itemId = 32212 },
+    { name = "Enduring Seaspray Emerald", color = "Green", material = "Seaspray Emerald", stats = "+5 Defense, +7 Stamina", itemId = 32223 },
+    { name = "Radiant Seaspray Emerald", color = "Green", material = "Seaspray Emerald", stats = "+5 Spell Pen, +7 Stamina", itemId = 32224 },
+    { name = "Dazzling Seaspray Emerald", color = "Green", material = "Seaspray Emerald", stats = "+5 Intellect, +2 Mana/5", itemId = 32225 },
+    { name = "Jagged Seaspray Emerald", color = "Green", material = "Seaspray Emerald", stats = "+5 Crit, +7 Stamina", itemId = 32226 },
+    { name = "Steady Seaspray Emerald", color = "Green", material = "Seaspray Emerald", stats = "+5 Resilience, +7 Stamina", itemId = 35758 },
+    { name = "Forceful Seaspray Emerald", color = "Green", material = "Seaspray Emerald", stats = "+5 Attack Power, +7 Stamina", itemId = 35759 },
+
+    { name = "Sovereign Shadowsong Amethyst", color = "Purple", material = "Shadowsong Amethyst", stats = "+5 Strength, +6 Stamina", itemId = 32211 },
+    { name = "Shifting Shadowsong Amethyst", color = "Purple", material = "Shadowsong Amethyst", stats = "+5 Agility, +6 Stamina", itemId = 32212 },
+    { name = "Balanced Shadowsong Amethyst", color = "Purple", material = "Shadowsong Amethyst", stats = "+5 Crit, +6 Stamina", itemId = 32213 },
     { name = "Infused Shadowsong Amethyst", color = "Purple", material = "Shadowsong Amethyst", stats = "+5 Mana/5, +6 Stamina", itemId = 32214 },
+    { name = "Glowing Shadowsong Amethyst", color = "Purple", material = "Shadowsong Amethyst", stats = "+5 Spirit, +6 Stamina", itemId = 32215 },
+    { name = "Royal Shadowsong Amethyst", color = "Purple", material = "Shadowsong Amethyst", stats = "+11 Healing, +4 Spell Damage", itemId = 32216 },
+    { name = "Purified Shadowsong Amethyst", color = "Purple", material = "Shadowsong Amethyst", stats = "+5 Intellect, +6 Stamina", itemId = 37503 },
 }
+
+GemOrder_CutGemsCache = nil
+GemOrder_RareCutGemsCache = nil
 
 GemOrder_GemByName = {}
 GemOrder_GemByItemId = {}
