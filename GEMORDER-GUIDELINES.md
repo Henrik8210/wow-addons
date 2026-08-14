@@ -235,7 +235,7 @@ tinsert(UISpecialFrames, frame:GetName())
 
 **Why it breaks:** That list is part of protected UI handling (escape key, logout ordering).
 
-**Instead:** Prefer closing your frame with your own close button. If you need escape-to-close, research secure handlers for your WoW flavor — and retest logout every time.
+**Instead:** Prefer closing your frame with your own close button. For **ESC-to-close**, register in `UISpecialFrames` when the frame is first created (lazy UI init), not at addon load — and **never** remove entries on `LOGOUT`. See `GemOrder_RegisterEscapeFrame` in `Tooltips.lua`.
 
 ---
 
@@ -332,7 +332,8 @@ Stop and plan a logout test if the diff includes:
 
 - [ ] `RegisterEvent("BAG_UPDATE")` or bank slot events for automatic actions
 - [ ] `RegisterEvent("LOGOUT")` or `PLAYER_LEAVING_WORLD` for cleanup
-- [ ] `tinsert(UISpecialFrames, ...)`
+- [ ] `tinsert(UISpecialFrames, ...)` at file scope or on `ADDON_LOADED` (lazy UI init is OK — retest logout)
+- [ ] `tremove(UISpecialFrames, ...)` or logout hooks that edit `UISpecialFrames`
 - [ ] `StaticPopupDialogs[...] =` at file scope (outside a lazy registrar)
 - [ ] `SetScript` on `DropDownList` / `DropDownList*Button*` frames
 - [ ] `CloseDropDownMenus()` or hiding `DropDownList` from addon code during logout prep
@@ -349,7 +350,7 @@ Stop and plan a logout test if the diff includes:
 | Selected item tooltip | `OnEnter` on **your** dropdown arrow button (you own it) |
 | Stock / bag sync | Manual refresh button or scan when your UI opens |
 | Recipe scan | Register trade events when relevant panel opens |
-| Close on escape | Avoid `UISpecialFrames` unless tested; prefer explicit close |
+| Close on escape | Register in `UISpecialFrames` at lazy UI init; do not clean up on logout |
 
 ### Fixed version reference
 
@@ -365,7 +366,8 @@ Condensed list for day-to-day work:
 |---------|-----|
 | `BAG_UPDATE` / bank watcher auto-sharing stock at login | Taints before UI opens |
 | `PrepareForLogout` hooks on `PLAYER_LEAVING_WORLD` / `LOGOUT` | Fighting Blizzard logout |
-| Registering frames in `UISpecialFrames` at load | Taints escape/logout |
+| Registering frames in `UISpecialFrames` at **login/file load** | Taints escape/logout before UI opens |
+| Removing from `UISpecialFrames` on **logout** (`PrepareForLogout`) | Fights Blizzard during secure logout |
 | `StaticPopupDialogs[...] =` at **file load** in `UI.lua` | Runs at login even if UI never opens |
 | `SetScript` on Blizzard `DropDownList` buttons | Taints protected dropdown UI |
 

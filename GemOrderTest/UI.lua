@@ -411,8 +411,11 @@ function UI:CreateMainFrame()
     f:SetFrameStrata("DIALOG")
     f:Hide()
 
+    GemOrderTest_RegisterEscapeFrame(f)
+
     f:SetScript("OnHide", function()
         HideOpenDropdownLists()
+        HideOrderDialogSilently()
     end)
 
     SetFrameTitle(f, "GemOrderTest")
@@ -1505,6 +1508,7 @@ function UI:CreateOrderDialog()
     dialog:EnableMouse(true)
     dialog:SetMovable(true)
     dialog:Hide()
+    GemOrderTest_RegisterEscapeFrame(dialog)
 
     local shellBg = dialog:CreateTexture(nil, "BACKGROUND")
     shellBg:SetAllPoints()

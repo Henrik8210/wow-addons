@@ -79,6 +79,29 @@ function GemOrder_HideTooltip()
     GameTooltip:Hide()
 end
 
+function GemOrder_RegisterEscapeFrame(frame)
+    if not frame or not UISpecialFrames then
+        return
+    end
+    if GemOrder.Debug and GemOrder.Debug.ShouldSkipUISpecialFrames
+        and GemOrder.Debug:ShouldSkipUISpecialFrames() then
+        return
+    end
+
+    local name = frame.GetName and frame:GetName()
+    if not name or name == "" then
+        return
+    end
+
+    for i = 1, #UISpecialFrames do
+        if UISpecialFrames[i] == name then
+            return
+        end
+    end
+
+    tinsert(UISpecialFrames, name)
+end
+
 function GemOrder_GetGemItemId(gemName)
     if not gemName or gemName == "None" then
         return nil
