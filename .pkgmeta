@@ -1,0 +1,12 @@
+# CurseForge / BigWigs packager config for the wow-addons monorepo.
+# Packages only GemOrder/ — GemOrderTest and dev files are excluded.
+package-as: GemOrder
+
+ignore:
+  - GemOrderTest
+  - scripts
+  - GEMORDER-GUIDELINES.md
+  - CURSEFORGE.md
+  - README.md
+  - .cursor
+  - .gitignore

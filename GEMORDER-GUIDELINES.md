@@ -40,6 +40,27 @@ Fix logout taint: defer StaticPopup and use hooksecurefunc for dropdown tooltips
 
 ---
 
+## CurseForge (monorepo + GitHub auto-packaging)
+
+GemOrder on CurseForge is linked to this repo with **tagged commits only**. The root **`.pkgmeta`** tells the packager to ship the `GemOrder/` folder (not the whole monorepo).
+
+**Release steps:**
+
+1. Bump `GemOrder/GemOrder.toc` and `GemOrder.VERSION` in `GemOrder/Core.lua` (same version).
+2. Run `.\scripts\sync-gemordertest.ps1`.
+3. Deploy both folders to WoW (see below).
+4. Commit and push to `origin/main`.
+5. Create and push an annotated tag matching the version, e.g. `v0.8.3`:
+   ```powershell
+   git tag -a v0.8.3 -m "GemOrder v0.8.3"
+   git push origin v0.8.3
+   ```
+6. CurseForge builds a file from the tag automatically (check **Files** on the project).
+
+Use **`v` + semver** tags (`v0.8.3`, not `0.8.3`) so they are easy to spot. Do not tag GemOrderTest-only experiments unless you intend a CurseForge build.
+
+---
+
 ## WoW deploy path
 
 Always copy updated addons here after changes so `/reload` picks them up immediately:
@@ -404,9 +425,10 @@ GemOrderTest uses separate saved variables and addon messages, so it does not co
 - [ ] Both folders copied to WoW AddOns path
 - [ ] Logout smoke-test (main GemOrder) — see [case study](#logout-taint-case-study-aug-2026)
 - [ ] Committed and pushed to `origin/main` (required for every change, not only releases)
+- [ ] For CurseForge releases: git tag `vX.Y.Z` pushed to origin
 
 ---
 
 ## Cursor / agent rules
 
-The file `.cursor/rules/git-sync.mdc` points agents at this workflow: deploy to WoW, keep versions aligned, commit and push after meaningful GemOrder work.
+The file `.cursor/rules/git-sync.mdc` points agents at this workflow: deploy to WoW, keep versions aligned, **commit and push after every GemOrder/GemOrderTest change**.
